@@ -1,0 +1,14 @@
+services:
+  api-gateway:
+    build: services/api-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      BFF_URL: http://bff:8080
+    depends_on:
+      - bff
+
+  bff:
+    build: services/bff
+    expose:
+      - "8080"
