@@ -101,6 +101,39 @@ npm run lint                    # ESLint
 npm run build                   # TypeScript type check + Vite build
 ```
 
+## Database Migrations
+
+Migrations use [Alembic](https://alembic.sqlalchemy.org/) and live in `db/migrations/versions/`. A dedicated `db-migrate` container runs `alembic upgrade head` on startup (before any service that depends on it).
+
+### Creating a new migration
+
+```bash
+cd db
+alembic revision -m "describe your change"
+```
+
+This creates a new file in `db/migrations/versions/`. Edit the generated `upgrade()` and `downgrade()` functions to define your schema change.
+
+### Running migrations manually
+
+```bash
+# Via Docker (uses DATABASE_URL from docker-compose.yml)
+docker compose up db-migrate
+
+# Locally (requires PostgreSQL running on localhost:5432)
+cd db
+pip install alembic psycopg2-binary
+alembic upgrade head
+```
+
+### Key files
+
+| File | Purpose |
+|---|---|
+| `db/alembic.ini` | Alembic config (default DB URL, migration script location) |
+| `db/migrations/env.py` | Reads `DATABASE_URL` env var, falls back to `alembic.ini` |
+| `db/migrations/versions/` | Migration scripts (one per schema change) |
+
 ## Adding a New Service
 
 1. Create the service under `services/<name>/`

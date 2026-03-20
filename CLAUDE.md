@@ -48,6 +48,18 @@ API Gateway (FastAPI :8000)          services/api-gateway/src/main.py
 
 No code changes required in the gateway.
 
+## Database Migrations
+
+Migrations use Alembic, located in `db/migrations/versions/`. The `db-migrate` Docker container runs `alembic upgrade head` on startup before services start. `env.py` reads the `DATABASE_URL` env var (set in `docker-compose.yml`), falling back to the URL in `alembic.ini`.
+
+```bash
+cd db
+alembic revision -m "describe your change"   # Create a new migration
+alembic upgrade head                          # Run migrations locally
+```
+
+Migration scripts are manual — write `upgrade()` and `downgrade()` functions in the generated file.
+
 ## Key Files
 
 | File | Purpose |
