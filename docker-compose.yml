@@ -6,9 +6,17 @@ services:
     environment:
       BFF_URL: http://bff:8080
       SERVICE_DRIVER: http://driver-service:8081
+      SERVICE_BOOKING: http://booking-service:8082
+      SERVICE_ROUTES: http://routes-service:8083
+      SERVICE_CONFLICT-DETECTION: http://conflict-detection-service:8084
+      SERVICE_MESSAGING: http://messaging-service:8085
     depends_on:
       - bff
       - driver-service
+      - booking-service
+      - routes-service
+      - conflict-detection-service
+      - messaging-service
 
   bff:
     build: services/bff
@@ -19,6 +27,38 @@ services:
     build: services/driver-service
     expose:
       - "8081"
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+
+  booking-service:
+    build: services/booking-service
+    expose:
+      - "8082"
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+
+  routes-service:
+    build: services/routes-service
+    expose:
+      - "8083"
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+
+  conflict-detection-service:
+    build: services/conflict-detection-service
+    expose:
+      - "8084"
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+
+  messaging-service:
+    build: services/messaging-service
+    expose:
+      - "8085"
     depends_on:
       db-migrate:
         condition: service_completed_successfully
