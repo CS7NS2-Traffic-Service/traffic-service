@@ -9,8 +9,12 @@ Client (:5173 dev / :8000 prod)
   │
   ▼
 API Gateway (FastAPI :8000)
-  ├── /api/driver/* ──► Driver Service (:8081)
-  └── /*            ──► BFF (:8080) ──► React SPA
+  ├── /api/driver/*              ──► Driver Service (:8081)
+  ├── /api/booking/*             ──► Booking Service (:8082)
+  ├── /api/routes/*              ──► Routes Service (:8083)
+  ├── /api/conflict-detection/*  ──► Conflict Detection Service (:8084)
+  ├── /api/messaging/*           ──► Messaging Service (:8085)
+  └── /*                         ──► BFF (:8080) ──► React SPA
 ```
 
 | Service | Purpose | Tech |
@@ -18,8 +22,12 @@ API Gateway (FastAPI :8000)
 | **API Gateway** | Reverse proxy, routes `/api/<service>/*` to downstream services | FastAPI, httpx |
 | **BFF** | Serves the compiled React frontend | FastAPI |
 | **Driver Service** | Driver registration and authentication (JWT) | FastAPI, SQLAlchemy |
+| **Booking Service** | Booking management | FastAPI, SQLAlchemy |
+| **Routes Service** | Route management | FastAPI, SQLAlchemy |
+| **Conflict Detection Service** | Conflict detection | FastAPI, SQLAlchemy |
+| **Messaging Service** | Messaging | FastAPI, SQLAlchemy |
 | **Frontend** | Single-page application | React 19, TypeScript, Vite, Tailwind CSS |
-| **PostgreSQL** | Persistent storage | PostgreSQL 17 |
+| **PostgreSQL** | Persistent storage | PostgreSQL 16 |
 
 ## Prerequisites
 
@@ -44,7 +52,7 @@ This installs [Husky](https://typicode.github.io/husky/) pre-commit hooks that a
 docker compose up --build
 ```
 
-This starts the API gateway (:8000), BFF (:8080), driver service (:8081), PostgreSQL (:5432), pgAdmin (:5050), and runs database migrations.
+This starts all services, PostgreSQL (:5432), pgAdmin (:5050), and runs database migrations.
 
 ### 3. Frontend development (with hot reload)
 
@@ -76,11 +84,11 @@ The Vite dev server starts on `http://localhost:5173` and proxies `/api` request
 │   │           ├── api/            # API client functions
 │   │           ├── hooks/          # React Query mutations
 │   │           └── stores/         # Zustand state stores
-│   └── driver-service/             # Driver auth service
-│       └── src/
-│           ├── models/             # SQLAlchemy models
-│           ├── routes/             # API route handlers
-│           └── services/           # Business logic
+│   ├── driver-service/             # Driver auth service
+│   ├── booking-service/            # Booking management
+│   ├── routes-service/             # Route management
+│   ├── conflict-detection-service/ # Conflict detection
+│   └── messaging-service/          # Messaging
 ```
 
 ## Linting
