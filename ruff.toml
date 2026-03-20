@@ -1,0 +1,8 @@
+line-length = 88
+
+[format]
+quote-style = "single"
+
+[lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["B008"]  # FastAPI uses Depends() in argument defaults by design

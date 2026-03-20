@@ -12,12 +12,3 @@ dependencies = [
     "sqlalchemy>=2.0.48",
     "uvicorn",
 ]
-
-[tool.ruff]
-line-length = 88
-
-[tool.ruff.format]
-quote-style = "single"
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM"]

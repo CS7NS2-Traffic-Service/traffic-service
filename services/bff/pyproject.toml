@@ -8,12 +8,3 @@ dependencies = [
     "fastapi>=0.135.1",
     "uvicorn>=0.42.0",
 ]
-
-[tool.ruff]
-line-length = 88
-
-[tool.ruff.format]
-quote-style = "single"
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM"]

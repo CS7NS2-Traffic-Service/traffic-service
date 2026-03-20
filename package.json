@@ -10,8 +10,8 @@
       "bash -c 'cd services/bff/traffic-frontend && npx eslint --fix'"
     ],
     "services/*/src/**/*.py": [
-      "ruff check --fix",
-      "ruff format"
+      "ruff check --fix --config ruff.toml",
+      "ruff format --config ruff.toml"
     ]
   },
   "devDependencies": {
