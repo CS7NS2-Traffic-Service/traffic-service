@@ -11,6 +11,11 @@ app.mount(
 )
 
 
+@app.get('/health')
+async def health():
+    return {'status': 'ok'}
+
+
 @app.get('/')
 async def serve_index():
     return FileResponse('traffic-frontend/dist/index.html')

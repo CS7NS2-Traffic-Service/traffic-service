@@ -8,18 +8,23 @@ app = FastAPI()
 client = httpx.AsyncClient()
 
 
+@app.get('/health')
+async def health():
+    return {'status': 'ok'}
+
+
 def get_service_url(service: str) -> str | None:
-    return os.getenv(f"SERVICE_{service.upper()}")
+    return os.getenv(f'SERVICE_{service.upper()}')
 
 
-BFF_URL = os.getenv("BFF_URL", "http://bff:8080")
+BFF_URL = os.getenv('BFF_URL', 'http://bff:8080')
 
 
 async def proxy(request: Request, target: str) -> StreamingResponse:
     url = target + request.url.path
 
     if request.url.query:
-        url += f"?{request.url.query}"
+        url += f'?{request.url.query}'
 
     resp = await client.request(
         method=request.method,
@@ -35,18 +40,18 @@ async def proxy(request: Request, target: str) -> StreamingResponse:
 
 
 @app.api_route(
-    "/api/{service}/{_:path}",
-    methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    '/api/{service}/{_:path}',
+    methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
 )
 async def route_to_service(service: str, _: str, request: Request):
     target = get_service_url(service)
 
     if not target:
-        return {"error": f"Unknown service: {service}"}, 404
+        return {'error': f'Unknown service: {service}'}, 404
 
     return await proxy(request, target)
 
 
-@app.api_route("/{_:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
+@app.api_route('/{_:path}', methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
 async def route_to_bff(_: str, request: Request):
     return await proxy(request, BFF_URL)
