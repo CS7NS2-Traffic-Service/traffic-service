@@ -1,27 +1,33 @@
 import { useForm } from "react-hook-form"
+import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-
-type RegisterFormValues = {
-  username: string
-  password: string
-}
+import { useRegister } from "@/hooks/useRegister"
+import type { RegisterDriverDto } from "@/api/auth"
 
 function RegisterForm() {
+  const navigate = useNavigate()
+  const { mutate: registerDriver, isPending, error } = useRegister()
+
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<RegisterFormValues>()
+    formState: { errors },
+  } = useForm<RegisterDriverDto>()
 
-  function onSubmit(data: RegisterFormValues) {
-    console.log("Register:", data)
+  function onSubmit(data: RegisterDriverDto) {
+    registerDriver(data, {
+      onSuccess: () => navigate("/login"),
+    })
   }
 
   return (
     <CardContent>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {error && (
+          <p className="text-sm text-red-500">{error.message}</p>
+        )}
         <div className="space-y-1">
           <Input
             placeholder="Username"
@@ -44,8 +50,8 @@ function RegisterForm() {
             <p className="text-sm text-red-500">{errors.password.message}</p>
           )}
         </div>
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          Register
+        <Button type="submit" className="w-full" disabled={isPending}>
+          {isPending ? "Registering..." : "Register"}
         </Button>
       </form>
     </CardContent>

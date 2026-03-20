@@ -5,13 +5,23 @@ services:
       - "8000:8000"
     environment:
       BFF_URL: http://bff:8080
+      SERVICE_DRIVER: http://driver-service:8081
     depends_on:
       - bff
+      - driver-service
 
   bff:
     build: services/bff
     expose:
       - "8080"
+
+  driver-service:
+    build: services/driver-service
+    expose:
+      - "8081"
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
 
   postgres:
     image: postgres:16

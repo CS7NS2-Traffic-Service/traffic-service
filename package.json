@@ -1,0 +1,21 @@
+{
+  "name": "traffic-service",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "services/bff/traffic-frontend/**/*.{ts,tsx}": [
+      "bash -c 'cd services/bff/traffic-frontend && npx eslint --fix'"
+    ],
+    "services/*/src/**/*.py": [
+      "ruff check --fix",
+      "ruff format"
+    ]
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0"
+  }
+}

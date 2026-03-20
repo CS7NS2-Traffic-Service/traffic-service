@@ -64,4 +64,28 @@ Prefer small, focused components that are easy to manage. Extract logical pieces
 
 ## Linter Note
 
-The Python linter renames unused function parameters to `_`. FastAPI matches path parameters by name between the URL pattern and the function signature, so path parameter names in the URL pattern (e.g., `/{_:path}`) must match the function parameter name (`_: str`). Do not rename these back to descriptive names or the linter will break them again.
+FastAPI matches path parameters by name between the URL pattern and the function signature, so names like `/{full_path:path}` must match the function parameter (`full_path: str`). Do not rename path parameters without updating both places.
+
+## Pre-commit Hooks
+
+The repo uses **Husky** + **lint-staged** (configured in root `package.json`). On every commit:
+- **TypeScript/TSX files** in `services/bff/traffic-frontend/` → ESLint with auto-fix
+- **Python files** in `services/*/src/` → `ruff check --fix` + `ruff format`
+
+After cloning, run `npm install` at the repo root to activate the hooks.
+
+## CI Pipeline
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every push/PR to `main`:
+- **lint-frontend** — `npm run lint` + `npm run build` (includes TypeScript type check)
+- **lint-python** — `ruff check` + `ruff format --check` across all services
+- **docker-build** — `docker compose build` to validate Dockerfiles
+
+## Branch Protection (Manual Setup)
+
+The repo owner should enable these GitHub branch protection rules on `main`:
+- Require pull request reviews (at least 1 approval)
+- Require CI status checks to pass before merge (lint-frontend, lint-python, docker-build)
+- Disallow direct pushes to main
+
+This is configured in GitHub → Settings → Branches → Branch protection rules.
