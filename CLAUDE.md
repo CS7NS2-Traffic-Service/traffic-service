@@ -74,18 +74,6 @@ The repo uses **Husky** + **lint-staged** (configured in root `package.json`). O
 
 After cloning, run `npm install` at the repo root to activate the hooks.
 
-## CI Pipeline
+## Linting Config
 
-GitHub Actions (`.github/workflows/ci.yml`) runs on every push/PR to `main`:
-- **lint-frontend** — `npm run lint` + `npm run build` (includes TypeScript type check)
-- **lint-python** — `ruff check` + `ruff format --check` across all services
-- **docker-build** — `docker compose build` to validate Dockerfiles
-
-## Branch Protection (Manual Setup)
-
-The repo owner should enable these GitHub branch protection rules on `main`:
-- Require pull request reviews (at least 1 approval)
-- Require CI status checks to pass before merge (lint-frontend, lint-python, docker-build)
-- Disallow direct pushes to main
-
-This is configured in GitHub → Settings → Branches → Branch protection rules.
+Ruff config lives in `ruff.toml` at the repo root (single source of truth for all Python services).
