@@ -64,5 +64,9 @@ logs/
 *.pid
 .cache/
 
+# OSRM data
+osrm-data/*.osrm*
+osrm-data/*.pbf
+
 # Node
 node_modules/

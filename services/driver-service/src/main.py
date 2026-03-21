@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routes import auth
+from routes import auth, drivers
 
 app = FastAPI()
 
@@ -10,3 +10,4 @@ async def health():
 
 
 app.include_router(auth.router, prefix='/api/driver/auth', tags=['auth'])
+app.include_router(drivers.router, prefix='/api/driver/drivers', tags=['drivers'])

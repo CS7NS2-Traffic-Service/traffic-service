@@ -5,6 +5,9 @@ import { viteStaticCopy } from 'vite-plugin-static-copy'
 import path from 'path'
 
 export default defineConfig({
+  define: {
+    'import.meta.env.VITE_MAPBOX_TOKEN': JSON.stringify(process.env.MAPBOX_TOKEN),
+  },
   plugins: [
     react(),
     babel({ presets: [reactCompilerPreset()] }),

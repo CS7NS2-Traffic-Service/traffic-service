@@ -1,24 +1,21 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
+import type { DriverProfile } from "@/api/auth"
 
 type DriverState = {
-  username: string | null
+  driver: DriverProfile | null
   token: string | null
-  setToken: (token: string) => void
-  clearToken: () => void
-  setUsername: (username: string) => void
-  clearUsername: () => void
+  login: (driver: DriverProfile, token: string) => void
+  logout: () => void
 }
 
 export const useDriverStore = create<DriverState>()(
   persist(
     (set) => ({
+      driver: null,
       token: null,
-      username: null,
-      setToken: (token: string) => set({ token }),
-      setUsername: (username: string) => set({ username }),
-      clearToken: () => set({ token: null }),
-      clearUsername: () => set({ username: null }),
+      login: (driver: DriverProfile, token: string) => set({ driver, token }),
+      logout: () => set({ driver: null, token: null }),
     }),
     { name: "driver-store" }
   )

@@ -1,5 +1,8 @@
 FROM node:22-alpine AS frontend-builder
 
+ARG MAPBOX_TOKEN
+ENV MAPBOX_TOKEN=${MAPBOX_TOKEN}
+
 WORKDIR /app/traffic-frontend
 
 COPY traffic-frontend/package.json traffic-frontend/package-lock.json ./

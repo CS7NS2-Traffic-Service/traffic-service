@@ -1,6 +1,25 @@
-from fastapi import FastAPI
+import logging
+import threading
+from contextlib import asynccontextmanager
 
-app = FastAPI()
+from fastapi import FastAPI
+from routes.utilization import router as utilization_router
+
+logging.basicConfig(level=logging.INFO)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from consumer import run_consumer
+
+    thread = threading.Thread(target=run_consumer, daemon=True)
+    thread.start()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+
+app.include_router(utilization_router, prefix='/api/conflict-detection')
 
 
 @app.get('/health')

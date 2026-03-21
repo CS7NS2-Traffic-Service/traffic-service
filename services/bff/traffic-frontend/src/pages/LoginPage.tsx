@@ -9,8 +9,7 @@ import { useDriverStore } from "@/stores/driverStore"
 
 function LoginForm() {
   const navigate = useNavigate()
-  const setToken = useDriverStore((state) => state.setToken)
-  const setUsername = useDriverStore((state) => state.setUsername)
+  const login = useDriverStore((state) => state.login)
   const { mutate: loginDriver, isPending, error } = useLogin()
 
   const {
@@ -22,8 +21,7 @@ function LoginForm() {
   function onSubmit(data: LoginDriverDto) {
     loginDriver(data, {
       onSuccess: (response) => {
-        setToken(response.access_token)
-        setUsername(response.username)
+        login(response.driver, response.access_token)
         navigate("/")
       },
     })
@@ -37,11 +35,12 @@ function LoginForm() {
         )}
         <div className="space-y-1">
           <Input
-            placeholder="Username"
-            {...register("username", { required: "Username is required" })}
+            type="email"
+            placeholder="Email"
+            {...register("email", { required: "Email is required" })}
           />
-          {errors.username && (
-            <p className="text-sm text-red-500">{errors.username.message}</p>
+          {errors.email && (
+            <p className="text-sm text-red-500">{errors.email.message}</p>
           )}
         </div>
         <div className="space-y-1">

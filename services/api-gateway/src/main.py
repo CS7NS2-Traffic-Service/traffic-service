@@ -1,11 +1,99 @@
+import logging
 import os
 
 import httpx
+import redis
 from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
+from jose import JWTError, jwt
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 client = httpx.AsyncClient()
+
+JWT_SECRET_KEY = os.environ.get(
+    'JWT_SECRET_KEY',
+    'super-secret-key-change-in-prod',
+)
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://redis:6379')
+redis_client = redis.Redis.from_url(
+    REDIS_URL,
+    decode_responses=True,
+)
+
+BFF_URL = os.getenv('BFF_URL', 'http://bff:8080')
+
+PUBLIC_PATHS = {
+    ('POST', '/api/driver/auth/login'),
+    ('POST', '/api/driver/auth/register'),
+}
+
+
+def get_service_url(service: str) -> str | None:
+    return os.getenv(f'SERVICE_{service.upper()}')
+
+
+def is_public(method: str, path: str) -> bool:
+    if path == '/health':
+        return True
+    if not path.startswith('/api/'):
+        return True
+    return (method, path) in PUBLIC_PATHS
+
+
+def check_rate_limit(driver_id: str) -> bool:
+    """Return True if allowed, False if rate limited."""
+    try:
+        key = f'rate_limit:{driver_id}'
+        count = redis_client.incr(key)
+        if count == 1:
+            redis_client.expire(key, 60)
+        return count <= 100
+    except redis.exceptions.ConnectionError:
+        return True
+
+
+@app.middleware('http')
+async def auth_middleware(request: Request, call_next):
+    method = request.method
+    path = request.url.path
+
+    if is_public(method, path):
+        return await call_next(request)
+
+    auth_header = request.headers.get('authorization', '')
+    if not auth_header.startswith('Bearer '):
+        return JSONResponse(
+            status_code=401,
+            content={'detail': 'Missing or invalid token'},
+        )
+
+    token = auth_header.removeprefix('Bearer ')
+    try:
+        payload = jwt.decode(
+            token,
+            JWT_SECRET_KEY,
+            algorithms=['HS256'],
+        )
+        driver_id = payload.get('sub')
+        if not driver_id:
+            raise JWTError('Missing sub claim')
+    except JWTError:
+        return JSONResponse(
+            status_code=401,
+            content={'detail': 'Invalid or expired token'},
+        )
+
+    if not check_rate_limit(driver_id):
+        return JSONResponse(
+            status_code=429,
+            content={'detail': 'Rate limit exceeded'},
+        )
+
+    request.state.driver_id = driver_id
+    return await call_next(request)
 
 
 @app.get('/health')
@@ -13,23 +101,23 @@ async def health():
     return {'status': 'ok'}
 
 
-def get_service_url(service: str) -> str | None:
-    return os.getenv(f'SERVICE_{service.upper()}')
-
-
-BFF_URL = os.getenv('BFF_URL', 'http://bff:8080')
-
-
-async def proxy(request: Request, target: str) -> StreamingResponse:
+async def proxy(
+    request: Request,
+    target: str,
+) -> StreamingResponse:
     url = target + request.url.path
-
     if request.url.query:
         url += f'?{request.url.query}'
+
+    headers = dict(request.headers)
+    driver_id = getattr(request.state, 'driver_id', None)
+    if driver_id:
+        headers['x-driver-id'] = driver_id
 
     resp = await client.request(
         method=request.method,
         url=url,
-        headers=dict(request.headers),
+        headers=headers,
         content=await request.body(),
     )
     return StreamingResponse(
@@ -43,15 +131,23 @@ async def proxy(request: Request, target: str) -> StreamingResponse:
     '/api/{service}/{_:path}',
     methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
 )
-async def route_to_service(service: str, _: str, request: Request):
+async def route_to_service(
+    service: str,
+    _: str,
+    request: Request,
+):
     target = get_service_url(service)
-
     if not target:
-        return {'error': f'Unknown service: {service}'}, 404
-
+        return JSONResponse(
+            status_code=404,
+            content={'error': f'Unknown service: {service}'},
+        )
     return await proxy(request, target)
 
 
-@app.api_route('/{_:path}', methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
+@app.api_route(
+    '/{_:path}',
+    methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+)
 async def route_to_bff(_: str, request: Request):
     return await proxy(request, BFF_URL)

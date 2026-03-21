@@ -1,21 +1,37 @@
+export type VehicleType = "CAR" | "MOTORCYCLE" | "TRUCK" | "HGV"
+
 export type RegisterDriverDto = {
-  username: string
+  name: string
+  email: string
   password: string
+  license_number: string
+  vehicle_type: VehicleType
+  region: string
+}
+
+export type DriverProfile = {
+  driver_id: string
+  name: string
+  email: string
+  license_number: string
+  vehicle_type: VehicleType | null
+  region: string
+  created_at: string
 }
 
 export type RegisterDriverResponseDto = {
-  driver_id: string
-  username: string
+  driver: DriverProfile
+  access_token: string
 }
 
 export type LoginDriverDto = {
-  username: string
+  email: string
   password: string
 }
 
 export type LoginDriverResponseDto = {
+  driver: DriverProfile
   access_token: string
-  username: string
 }
 
 export async function loginDriver(data: LoginDriverDto): Promise<LoginDriverResponseDto> {
