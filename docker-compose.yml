@@ -138,6 +138,13 @@ services:
       postgres:
         condition: service_healthy
 
+  redisinsight:
+    image: redis/redisinsight:latest
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis
+
   pgadmin:
     image: dpage/pgadmin4
     environment:

@@ -89,6 +89,14 @@ Migration scripts are manual — write `upgrade()` and `downgrade()` functions i
 Prefer small, focused components that are easy to manage. Extract logical pieces into subcomponents
 rather than building large monolithic ones.
 
+## Cross-Service Foreign Keys
+
+Each service has its own `declarative_base()`. SQLAlchemy cannot resolve `ForeignKey('other_table.id')`
+if the target table belongs to a different service's metadata registry. **Never use `ForeignKey(...)` in
+SQLAlchemy models for columns that reference tables owned by another service.** Just declare the column
+type (e.g. `mapped_column(UUID(as_uuid=True), nullable=False)`). The actual DB-level FK constraints are
+created by Alembic migrations and still enforce referential integrity at the database level.
+
 ## Linter Note
 
 FastAPI matches path parameters by name between the URL pattern and the function signature, so names

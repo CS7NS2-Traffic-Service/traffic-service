@@ -12,11 +12,7 @@ class SegmentReservation(BaseDBModel):
         primary_key=True,
         server_default='gen_random_uuid()',
     )
-    booking_id = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey('bookings.booking_id'),
-        nullable=False,
-    )
+    booking_id = mapped_column(UUID(as_uuid=True), nullable=False)
     segment_id = mapped_column(
         UUID(as_uuid=True),
         ForeignKey('road_segments.segment_id'),

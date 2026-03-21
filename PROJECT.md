@@ -491,6 +491,16 @@ traffic-service/
 
 ---
 
+## Cross-Service Foreign Keys
+
+All services share one PostgreSQL database but each has its own SQLAlchemy `declarative_base()`. Do
+**not** use `ForeignKey('other_table.id')` in a model when the target table is owned by a different
+service — SQLAlchemy cannot resolve cross-registry references and will raise `NoReferencedTableError`.
+Instead, declare the column as a plain typed column (e.g. `mapped_column(UUID(as_uuid=True),
+nullable=False)`) and rely on the Alembic migration to create the actual DB-level FK constraint.
+
+---
+
 ## Service Structure (per service)
 
 Each service follows a consistent technical split:

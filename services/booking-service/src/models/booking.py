@@ -1,5 +1,5 @@
 from database import BaseDBModel
-from sqlalchemy import DateTime, ForeignKey, Text
+from sqlalchemy import DateTime, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import mapped_column
 
@@ -12,16 +12,8 @@ class Booking(BaseDBModel):
         primary_key=True,
         server_default='gen_random_uuid()',
     )
-    driver_id = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey('drivers.driver_id'),
-        nullable=False,
-    )
-    route_id = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey('routes.route_id'),
-        nullable=False,
-    )
+    driver_id = mapped_column(UUID(as_uuid=True), nullable=False)
+    route_id = mapped_column(UUID(as_uuid=True), nullable=False)
     departure_time = mapped_column(DateTime, nullable=False)
     estimated_arrival = mapped_column(DateTime, nullable=True)
     status = mapped_column(Text, nullable=False, server_default="'PENDING'")
