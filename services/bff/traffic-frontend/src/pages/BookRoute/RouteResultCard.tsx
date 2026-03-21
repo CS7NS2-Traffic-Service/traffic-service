@@ -2,7 +2,7 @@ import { createBooking, type Booking } from "@/api/bookings"
 import type { RouteResult, Segment } from "@/api/routes"
 import { StatusBadge } from "@/components/StatusBadge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@base-ui/react/button"
+import { Button } from "@/components/ui/button"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 
@@ -53,8 +53,21 @@ function RouteResultCard({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Route Found</CardTitle>
+        {bookingResult ? (
+          <div className="flex items-center gap-2 text-sm text-green-700">
+            <p>Booking created: {bookingResult.booking_id}</p>
+            <StatusBadge status={bookingResult.status} />
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            {bookingError && <p className="text-sm text-red-500">{bookingError}</p>}
+            <Button onClick={handleBook} disabled={isBooking}>
+              {isBooking ? "Booking..." : "Book this Route"}
+            </Button>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="grid grid-cols-2 gap-2 text-sm">
@@ -87,21 +100,6 @@ function RouteResultCard({
           </div>
         )}
 
-        <div className="border-t pt-3">
-          {bookingResult ? (
-            <div className="flex items-center gap-2 text-sm text-green-700">
-              <p>Booking created: {bookingResult.booking_id}</p>
-              <StatusBadge status={bookingResult.status} />
-            </div>
-          ) : (
-            <>
-              {bookingError && <p className="mb-2 text-sm text-red-500">{bookingError}</p>}
-              <Button onClick={handleBook} disabled={isBooking}>
-                {isBooking ? "Booking..." : "Book this Route"}
-              </Button>
-            </>
-          )}
-        </div>
       </CardContent>
     </Card>
   )
