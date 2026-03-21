@@ -2,12 +2,12 @@ import { Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import ProtectedRoute from './components/ProtectedRoute'
-import HomePage from './pages/HomePage'
-import LoginPage from './pages/LoginPage'
-import RegisterPage from './pages/RegisterPage'
-import BookingsPage from './pages/BookingsPage'
-import InboxPage from './pages/InboxPage'
-import BookRoutePage from './pages/BookRoutePage'
+import HomePage from './pages/Home/HomePage'
+import LoginPage from './pages/Login/LoginPage'
+import RegisterPage from './pages/Register/RegisterPage'
+import BookingsPage from './pages/Bookings/BookingsPage'
+import InboxPage from './pages/Inbox/InboxPage'
+import BookRoutePage from './pages/BookRoute/BookRoutePage'
 
 function App() {
   return (
