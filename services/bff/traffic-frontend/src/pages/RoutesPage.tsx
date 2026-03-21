@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useMemo, useRef } from "react"
+import { useSearchParams } from "react-router-dom"
 import { useMutation } from "@tanstack/react-query"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -54,16 +55,27 @@ function RouteResultCard({ route, segments, utilization }: { route: RouteResult;
 }
 
 function RoutesPage() {
-  const [originLat, setOriginLat] = useState("")
-  const [originLng, setOriginLng] = useState("")
-  const [destLat, setDestLat] = useState("")
-  const [destLng, setDestLng] = useState("")
+  const [searchParams, setSearchParams] = useSearchParams()
+  const originLat = searchParams.get("originLat") ?? ""
+  const originLng = searchParams.get("originLng") ?? ""
+  const destLat = searchParams.get("destLat") ?? ""
+  const destLng = searchParams.get("destLng") ?? ""
   const [segments, setSegments] = useState<Segment[] | null>(null)
   const [utilization, setUtilization] = useState<Record<string, number>>({})
   const [departureTime, setDepartureTime] = useState(() => new Date().toISOString().slice(0, 16))
-  const [originCoord, setOriginCoord] = useState<Coord | null>(null)
-  const [destCoord, setDestCoord] = useState<Coord | null>(null)
   const clickCountRef = useRef(0)
+
+  const originCoord = useMemo<Coord | null>(() => {
+    const lat = parseFloat(originLat)
+    const lng = parseFloat(originLng)
+    return !isNaN(lat) && !isNaN(lng) ? { lat, lng } : null
+  }, [originLat, originLng])
+
+  const destCoord = useMemo<Coord | null>(() => {
+    const lat = parseFloat(destLat)
+    const lng = parseFloat(destLng)
+    return !isNaN(lat) && !isNaN(lng) ? { lat, lng } : null
+  }, [destLat, destLng])
 
   const { mutate, data: route, isPending, error } = useMutation({
     mutationFn: () =>
@@ -110,20 +122,21 @@ function RoutesPage() {
 
   const handleMapClick = useCallback((lngLat: Coord) => {
     if (clickCountRef.current === 0) {
-      setOriginLat(lngLat.lat.toFixed(6))
-      setOriginLng(lngLat.lng.toFixed(6))
-      setDestLat("")
-      setDestLng("")
-      setOriginCoord(lngLat)
-      setDestCoord(null)
+      setSearchParams(new URLSearchParams({
+        originLat: lngLat.lat.toFixed(6),
+        originLng: lngLat.lng.toFixed(6),
+      }), { replace: true })
       clickCountRef.current = 1
     } else {
-      setDestLat(lngLat.lat.toFixed(6))
-      setDestLng(lngLat.lng.toFixed(6))
-      setDestCoord(lngLat)
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev)
+        next.set("destLat", lngLat.lat.toFixed(6))
+        next.set("destLng", lngLat.lng.toFixed(6))
+        return next
+      }, { replace: true })
       clickCountRef.current = 0
     }
-  }, [])
+  }, [setSearchParams])
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -158,7 +171,7 @@ function RoutesPage() {
                   step="any"
                   placeholder="e.g. 48.2082"
                   value={originLat}
-                  onChange={(e) => setOriginLat(e.target.value)}
+                  onChange={(e) => setSearchParams((prev) => { const next = new URLSearchParams(prev); next.set("originLat", e.target.value); return next }, { replace: true })}
                 />
               </div>
               <div className="space-y-1">
@@ -168,7 +181,7 @@ function RoutesPage() {
                   step="any"
                   placeholder="e.g. 16.3738"
                   value={originLng}
-                  onChange={(e) => setOriginLng(e.target.value)}
+                  onChange={(e) => setSearchParams((prev) => { const next = new URLSearchParams(prev); next.set("originLng", e.target.value); return next }, { replace: true })}
                 />
               </div>
               <div className="space-y-1">
@@ -178,7 +191,7 @@ function RoutesPage() {
                   step="any"
                   placeholder="e.g. 47.0707"
                   value={destLat}
-                  onChange={(e) => setDestLat(e.target.value)}
+                  onChange={(e) => setSearchParams((prev) => { const next = new URLSearchParams(prev); next.set("destLat", e.target.value); return next }, { replace: true })}
                 />
               </div>
               <div className="space-y-1">
@@ -188,7 +201,7 @@ function RoutesPage() {
                   step="any"
                   placeholder="e.g. 15.4395"
                   value={destLng}
-                  onChange={(e) => setDestLng(e.target.value)}
+                  onChange={(e) => setSearchParams((prev) => { const next = new URLSearchParams(prev); next.set("destLng", e.target.value); return next }, { replace: true })}
                 />
               </div>
             </div>
