@@ -12,14 +12,14 @@ router = APIRouter()
 
 
 @router.get('', status_code=200)
-async def lookup_route(
+def lookup_route(
     origin_lat: float = Query(...),
     origin_lng: float = Query(...),
     dest_lat: float = Query(...),
     dest_lng: float = Query(...),
     db: Session = Depends(get_db_connection),
 ) -> RouteResponse:
-    route = await find_or_create_route(origin_lat, origin_lng, dest_lat, dest_lng, db)
+    route = find_or_create_route(origin_lat, origin_lng, dest_lat, dest_lng, db)
     return RouteResponse(
         route_id=str(route.route_id),
         origin=route.origin,

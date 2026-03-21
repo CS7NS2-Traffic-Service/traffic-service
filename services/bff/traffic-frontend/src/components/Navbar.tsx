@@ -59,10 +59,9 @@ function Navbar() {
           </Button>
           {token && (
             <>
-              <NavLink to="/routes" label="Routes" />
+              <NavLink to="/routes" label="Book Route" />
               <NavLink to="/bookings" label="Bookings" />
               <NavLink to="/inbox" label="Inbox" badge={unreadCount} />
-              <NavLink to="/dashboard" label="Dashboard" />
             </>
           )}
         </div>

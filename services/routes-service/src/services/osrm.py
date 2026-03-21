@@ -6,7 +6,7 @@ from fastapi import HTTPException
 OSRM_URL = os.environ.get('OSRM_URL', 'http://osrm:5000')
 
 
-async def query_route(
+def query_route(
     origin_lat: float,
     origin_lng: float,
     dest_lat: float,
@@ -25,9 +25,8 @@ async def query_route(
     )
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(url)
-            response.raise_for_status()
+        response = httpx.get(url, timeout=10.0)
+        response.raise_for_status()
     except (httpx.ConnectError, httpx.TimeoutException) as exc:
         raise HTTPException(
             status_code=503,

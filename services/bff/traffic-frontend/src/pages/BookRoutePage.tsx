@@ -1,18 +1,60 @@
 import { useState, useCallback, useMemo, useRef } from "react"
 import { useSearchParams } from "react-router-dom"
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { StatusBadge } from "@/components/StatusBadge"
 import { findRoute, getRouteSegments, getSegmentUtilization, type RouteResult, type Segment } from "@/api/routes"
+import { createBooking, type Booking } from "@/api/bookings"
 import RouteMap from "@/components/RouteMap"
 
 type Coord = { lng: number; lat: number }
 
-function RouteResultCard({ route, segments, utilization }: { route: RouteResult; segments: Segment[] | null; utilization: Record<string, number> | null }) {
+function RouteResultCard({
+  route,
+  segments,
+  utilization,
+  departureTime,
+}: {
+  route: RouteResult
+  segments: Segment[] | undefined
+  utilization: Record<string, number>
+  departureTime: string
+}) {
+  const queryClient = useQueryClient()
+  const [bookingResult, setBookingResult] = useState<Booking | null>(null)
+  const [bookingError, setBookingError] = useState<string | null>(null)
+
+  const { mutate: book, isPending: isBooking } = useMutation({
+    mutationFn: createBooking,
+    onSuccess: (booking) => {
+      setBookingResult(booking)
+      setBookingError(null)
+      queryClient.invalidateQueries({ queryKey: ["bookings"] })
+    },
+    onError: (err: Error) => {
+      setBookingError(err.message)
+      setBookingResult(null)
+    },
+  })
+
   const durationMinutes = route.estimated_duration
     ? Math.round(route.estimated_duration / 60)
     : null
+
+  function handleBook() {
+    const departure = new Date(departureTime).toISOString()
+    const estimatedArrival = route.estimated_duration
+      ? new Date(new Date(departureTime).getTime() + route.estimated_duration * 1000).toISOString()
+      : undefined
+
+    book({
+      route_id: route.route_id,
+      departure_time: departure,
+      estimated_arrival: estimatedArrival,
+    })
+  }
 
   return (
     <Card>
@@ -42,28 +84,49 @@ function RouteResultCard({ route, segments, utilization }: { route: RouteResult;
                   <p className="text-muted-foreground">
                     Region: {seg.region}
                     {seg.capacity !== null && ` | Capacity: ${seg.capacity}`}
-                    {seg.capacity !== null && ` | Reserved: ${utilization?.[seg.segment_id] ?? 0} / ${seg.capacity}`}
+                    {seg.capacity !== null && ` | Reserved: ${utilization[seg.segment_id] ?? 0} / ${seg.capacity}`}
                   </p>
                 </div>
               ))}
             </div>
           </div>
         )}
+
+        <div className="border-t pt-3">
+          {bookingResult ? (
+            <div className="flex items-center gap-2 text-sm text-green-700">
+              <p>Booking created: {bookingResult.booking_id}</p>
+              <StatusBadge status={bookingResult.status} />
+            </div>
+          ) : (
+            <>
+              {bookingError && <p className="mb-2 text-sm text-red-500">{bookingError}</p>}
+              <Button onClick={handleBook} disabled={isBooking}>
+                {isBooking ? "Booking..." : "Book this Route"}
+              </Button>
+            </>
+          )}
+        </div>
       </CardContent>
     </Card>
   )
 }
 
-function RoutesPage() {
+function BookRoutePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const originLat = searchParams.get("originLat") ?? ""
   const originLng = searchParams.get("originLng") ?? ""
   const destLat = searchParams.get("destLat") ?? ""
   const destLng = searchParams.get("destLng") ?? ""
-  const [segments, setSegments] = useState<Segment[] | null>(null)
-  const [utilization, setUtilization] = useState<Record<string, number>>({})
-  const [departureTime, setDepartureTime] = useState(() => new Date().toISOString().slice(0, 16))
+  const departureTime = searchParams.get("departure") ?? new Date().toISOString().slice(0, 16)
   const clickCountRef = useRef(0)
+
+  const setParam = (key: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.set(key, e.target.value)
+      return next
+    }, { replace: true })
 
   const originCoord = useMemo<Coord | null>(() => {
     const lat = parseFloat(originLat)
@@ -85,40 +148,39 @@ function RoutesPage() {
         parseFloat(destLat),
         parseFloat(destLng),
       ),
-    onSuccess: async (result) => {
-      if (result.segment_ids && result.segment_ids.length > 0) {
-        try {
-          const segs = await getRouteSegments(result.route_id)
-          setSegments(segs)
-
-          try {
-            const windowStart = new Date(departureTime).toISOString()
-            const windowEnd = new Date(
-              new Date(departureTime).getTime() + (result.estimated_duration ?? 0) * 1000,
-            ).toISOString()
-            const utilData = await getSegmentUtilization(
-              segs.map((s) => s.segment_id),
-              windowStart,
-              windowEnd,
-            )
-            const utilMap: Record<string, number> = {}
-            for (const u of utilData) {
-              utilMap[u.segment_id] = u.active_reservations
-            }
-            setUtilization(utilMap)
-          } catch {
-            setUtilization({})
-          }
-        } catch {
-          setSegments(null)
-          setUtilization({})
-        }
-      } else {
-        setSegments(null)
-        setUtilization({})
-      }
-    },
   })
+
+  const hasSegments = (route?.segment_ids?.length ?? 0) > 0
+
+  const { data: segments } = useQuery({
+    queryKey: ["segments", route?.route_id],
+    queryFn: () => getRouteSegments(route!.route_id),
+    enabled: !!route?.route_id && hasSegments,
+  })
+
+  const { data: utilizationData } = useQuery({
+    queryKey: ["utilization", route?.route_id, departureTime],
+    queryFn: () => {
+      const windowStart = new Date(departureTime).toISOString()
+      const windowEnd = new Date(
+        new Date(departureTime).getTime() + (route!.estimated_duration ?? 0) * 1000,
+      ).toISOString()
+      return getSegmentUtilization(
+        segments!.map((s) => s.segment_id),
+        windowStart,
+        windowEnd,
+      )
+    },
+    enabled: !!segments && segments.length > 0,
+  })
+
+  const utilization = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const u of utilizationData ?? []) {
+      map[u.segment_id] = u.active_reservations
+    }
+    return map
+  }, [utilizationData])
 
   const handleMapClick = useCallback((lngLat: Coord) => {
     if (clickCountRef.current === 0) {
@@ -129,10 +191,10 @@ function RoutesPage() {
       clickCountRef.current = 1
     } else {
       setSearchParams((prev) => {
-        const next = new URLSearchParams(prev)
-        next.set("destLat", lngLat.lat.toFixed(6))
-        next.set("destLng", lngLat.lng.toFixed(6))
-        return next
+        const newParams = new URLSearchParams(prev)
+        newParams.set("destLat", lngLat.lat.toFixed(6))
+        newParams.set("destLng", lngLat.lng.toFixed(6))
+        return newParams
       }, { replace: true })
       clickCountRef.current = 0
     }
@@ -140,8 +202,6 @@ function RoutesPage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setSegments(null)
-    setUtilization({})
     mutate()
   }
 
@@ -155,14 +215,16 @@ function RoutesPage() {
   }))
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8 px-4 py-8">
+    <div className="mx-auto max-w-7xl px-4 py-8">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Find a Route</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {error && <p className="text-sm text-red-500">{(error as Error).message}</p>}
+            {error && <p className="text-sm text-red-500">{error.message}</p>}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-sm font-medium">Origin Latitude</label>
@@ -171,7 +233,7 @@ function RoutesPage() {
                   step="any"
                   placeholder="e.g. 48.2082"
                   value={originLat}
-                  onChange={(e) => setSearchParams((prev) => { const next = new URLSearchParams(prev); next.set("originLat", e.target.value); return next }, { replace: true })}
+                  onChange={setParam("originLat")}
                 />
               </div>
               <div className="space-y-1">
@@ -181,7 +243,7 @@ function RoutesPage() {
                   step="any"
                   placeholder="e.g. 16.3738"
                   value={originLng}
-                  onChange={(e) => setSearchParams((prev) => { const next = new URLSearchParams(prev); next.set("originLng", e.target.value); return next }, { replace: true })}
+                  onChange={setParam("originLng")}
                 />
               </div>
               <div className="space-y-1">
@@ -191,7 +253,7 @@ function RoutesPage() {
                   step="any"
                   placeholder="e.g. 47.0707"
                   value={destLat}
-                  onChange={(e) => setSearchParams((prev) => { const next = new URLSearchParams(prev); next.set("destLat", e.target.value); return next }, { replace: true })}
+                  onChange={setParam("destLat")}
                 />
               </div>
               <div className="space-y-1">
@@ -201,13 +263,13 @@ function RoutesPage() {
                   step="any"
                   placeholder="e.g. 15.4395"
                   value={destLng}
-                  onChange={(e) => setSearchParams((prev) => { const next = new URLSearchParams(prev); next.set("destLng", e.target.value); return next }, { replace: true })}
+                  onChange={setParam("destLng")}
                 />
               </div>
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium">Departure Time</label>
-              <Input type="datetime-local" value={departureTime} onChange={(e) => setDepartureTime(e.target.value)} />
+              <Input type="datetime-local" value={departureTime} onChange={setParam("departure")} />
             </div>
             <Button type="submit" disabled={isPending || !isValid}>
               {isPending ? "Searching..." : "Find Route"}
@@ -219,6 +281,10 @@ function RoutesPage() {
         </CardContent>
       </Card>
 
+      {route && <RouteResultCard route={route} segments={segments} utilization={utilization} departureTime={departureTime} />}
+        </div>
+
+        <div className="lg:sticky lg:top-8 lg:self-start">
       <RouteMap
         geometry={route?.geometry as GeoJSON.Geometry | undefined}
         segments={mapSegments}
@@ -226,10 +292,10 @@ function RoutesPage() {
         destination={destCoord}
         onMapClick={handleMapClick}
       />
-
-      {route && <RouteResultCard route={route} segments={segments} utilization={utilization} />}
+        </div>
+      </div>
     </div>
   )
 }
 
-export default RoutesPage
+export default BookRoutePage

@@ -1,23 +1,26 @@
-import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { fetchBookings, createBooking, cancelBooking, type Booking } from "@/api/bookings"
+import { StatusBadge } from "@/components/StatusBadge"
+import { fetchBookings, cancelBooking, type Booking } from "@/api/bookings"
 
-const STATUS_COLORS: Record<string, string> = {
-  PENDING: "bg-yellow-100 text-yellow-800",
-  APPROVED: "bg-green-100 text-green-800",
-  REJECTED: "bg-red-100 text-red-800",
-  CANCELLED: "bg-gray-100 text-gray-800",
+const STAT_LABELS = ["PENDING", "APPROVED", "REJECTED", "CANCELLED"] as const
+
+const STAT_COLORS: Record<string, string> = {
+  PENDING: "text-yellow-600",
+  APPROVED: "text-green-600",
+  REJECTED: "text-red-600",
+  CANCELLED: "text-gray-500",
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const color = STATUS_COLORS[status] ?? "bg-gray-100 text-gray-800"
+function StatCard({ label, count }: { label: string; count: number }) {
   return (
-    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${color}`}>
-      {status}
-    </span>
+    <Card>
+      <CardContent className="pt-2">
+        <p className="text-sm text-muted-foreground">{label}</p>
+        <p className={`text-2xl font-bold ${STAT_COLORS[label] ?? ""}`}>{count}</p>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -53,61 +56,6 @@ function BookingCard({ booking, onCancel, isCancelling }: {
   )
 }
 
-function CreateBookingForm({ onCreated }: { onCreated: () => void }) {
-  const [routeId, setRouteId] = useState("")
-  const [departureTime, setDepartureTime] = useState("")
-  const [error, setError] = useState<string | null>(null)
-
-  const { mutate, isPending } = useMutation({
-    mutationFn: createBooking,
-    onSuccess: () => {
-      setRouteId("")
-      setDepartureTime("")
-      setError(null)
-      onCreated()
-    },
-    onError: (err: Error) => setError(err.message),
-  })
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!routeId || !departureTime) return
-    mutate({ route_id: routeId, departure_time: new Date(departureTime).toISOString() })
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Create Booking</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && <p className="text-sm text-red-500">{error}</p>}
-          <div className="space-y-1">
-            <label className="text-sm font-medium">Route ID</label>
-            <Input
-              placeholder="Enter route ID"
-              value={routeId}
-              onChange={(e) => setRouteId(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-medium">Departure Time</label>
-            <Input
-              type="datetime-local"
-              value={departureTime}
-              onChange={(e) => setDepartureTime(e.target.value)}
-            />
-          </div>
-          <Button type="submit" disabled={isPending || !routeId || !departureTime}>
-            {isPending ? "Creating..." : "Create Booking"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
-  )
-}
-
 function BookingsPage() {
   const queryClient = useQueryClient()
 
@@ -122,14 +70,25 @@ function BookingsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["bookings"] }),
   })
 
+  const statusCounts = (bookings ?? []).reduce<Record<string, number>>((acc, b) => {
+    acc[b.status] = (acc[b.status] ?? 0) + 1
+    return acc
+  }, {})
+
   return (
-    <div className="mx-auto max-w-3xl space-y-8 px-4 py-8">
-      <CreateBookingForm onCreated={() => queryClient.invalidateQueries({ queryKey: ["bookings"] })} />
+    <div className="mx-auto max-w-4xl space-y-8 px-4 py-8">
+      {isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}
+      {error && <p className="text-sm text-red-500">{(error as Error).message}</p>}
+
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+        <StatCard label="Total" count={bookings?.length ?? 0} />
+        {STAT_LABELS.map((status) => (
+          <StatCard key={status} label={status} count={statusCounts[status] ?? 0} />
+        ))}
+      </div>
 
       <div className="space-y-4">
         <h2 className="text-lg font-semibold">Your Bookings</h2>
-        {isLoading && <p className="text-sm text-muted-foreground">Loading bookings...</p>}
-        {error && <p className="text-sm text-red-500">{(error as Error).message}</p>}
         {bookings && bookings.length === 0 && (
           <p className="text-sm text-muted-foreground">No bookings yet.</p>
         )}

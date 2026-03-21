@@ -2,10 +2,11 @@ import logging
 import os
 
 import httpx
-import redis
+import redis.asyncio as aioredis
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from jose import JWTError, jwt
+from redis.exceptions import ConnectionError as RedisConnectionError
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -18,7 +19,7 @@ JWT_SECRET_KEY = os.environ.get(
     'super-secret-key-change-in-prod',
 )
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://redis:6379')
-redis_client = redis.Redis.from_url(
+redis_client = aioredis.from_url(
     REDIS_URL,
     decode_responses=True,
 )
@@ -43,15 +44,15 @@ def is_public(method: str, path: str) -> bool:
     return (method, path) in PUBLIC_PATHS
 
 
-def check_rate_limit(driver_id: str) -> bool:
+async def check_rate_limit(driver_id: str) -> bool:
     """Return True if allowed, False if rate limited."""
     try:
         key = f'rate_limit:{driver_id}'
-        count = redis_client.incr(key)
+        count = await redis_client.incr(key)
         if count == 1:
-            redis_client.expire(key, 60)
+            await redis_client.expire(key, 60)
         return count <= 100
-    except redis.exceptions.ConnectionError:
+    except RedisConnectionError:
         return True
 
 
@@ -86,7 +87,7 @@ async def auth_middleware(request: Request, call_next):
             content={'detail': 'Invalid or expired token'},
         )
 
-    if not check_rate_limit(driver_id):
+    if not await check_rate_limit(driver_id):
         return JSONResponse(
             status_code=429,
             content={'detail': 'Rate limit exceeded'},

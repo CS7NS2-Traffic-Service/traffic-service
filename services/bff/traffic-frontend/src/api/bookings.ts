@@ -1,12 +1,14 @@
 import { authHeaders, handleResponse } from "@/api/client"
 
+export type BookingStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | "EXPIRED"
+
 export type Booking = {
   booking_id: string
   driver_id: string
   route_id: string
   departure_time: string
   estimated_arrival: string | null
-  status: string
+  status: BookingStatus
   created_at: string
   expires_at: string | null
 }

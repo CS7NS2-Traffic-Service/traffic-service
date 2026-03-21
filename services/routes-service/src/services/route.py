@@ -49,7 +49,7 @@ def get_route_by_id(route_id: str, db: Session) -> Route | None:
     return db.query(Route).filter(Route.route_id == route_id).first()
 
 
-async def find_or_create_route(
+def find_or_create_route(
     origin_lat: float,
     origin_lng: float,
     dest_lat: float,
@@ -67,7 +67,7 @@ async def find_or_create_route(
     if existing:
         return existing
 
-    osrm_result = await query_route(origin_lat, origin_lng, dest_lat, dest_lng)
+    osrm_result = query_route(origin_lat, origin_lng, dest_lat, dest_lng)
 
     segment_ids = _find_or_create_segments(osrm_result['steps'], db)
 

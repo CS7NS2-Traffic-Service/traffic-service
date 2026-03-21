@@ -7,8 +7,7 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import BookingsPage from './pages/BookingsPage'
 import InboxPage from './pages/InboxPage'
-import RoutesPage from './pages/RoutesPage'
-import DashboardPage from './pages/DashboardPage'
+import BookRoutePage from './pages/BookRoutePage'
 
 function App() {
   return (
@@ -20,8 +19,7 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/bookings" element={<ProtectedRoute><BookingsPage /></ProtectedRoute>} />
         <Route path="/inbox" element={<ProtectedRoute><InboxPage /></ProtectedRoute>} />
-        <Route path="/routes" element={<ProtectedRoute><RoutesPage /></ProtectedRoute>} />
-        <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+        <Route path="/routes" element={<ProtectedRoute><BookRoutePage /></ProtectedRoute>} />
       </Routes>
       <Footer />
     </>
