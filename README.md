@@ -17,17 +17,28 @@ API Gateway (FastAPI :8000)
   └── /*                         ──► BFF (:8080) ──► React SPA
 ```
 
+**Services:**
+
 | Service | Purpose | Tech |
 |---|---|---|
-| **API Gateway** | Reverse proxy, routes `/api/<service>/*` to downstream services | FastAPI, httpx |
+| **API Gateway** | Reverse proxy, JWT validation, rate limiting | FastAPI, httpx, Redis |
 | **BFF** | Serves the compiled React frontend | FastAPI |
 | **Driver Service** | Driver registration and authentication (JWT) | FastAPI, SQLAlchemy |
-| **Booking Service** | Booking management | FastAPI, SQLAlchemy |
-| **Routes Service** | Route management | FastAPI, SQLAlchemy |
-| **Conflict Detection Service** | Conflict detection | FastAPI, SQLAlchemy |
-| **Messaging Service** | Messaging | FastAPI, SQLAlchemy |
-| **Frontend** | Single-page application | React 19, TypeScript, Vite, Tailwind CSS |
-| **PostgreSQL** | Persistent storage | PostgreSQL 16 |
+| **Booking Service** | Booking lifecycle, publishes/consumes events via Redis Streams | FastAPI, SQLAlchemy, Redis Streams |
+| **Routes Service** | Route lookup/computation, road segment management | FastAPI, SQLAlchemy, OSRM |
+| **Conflict Detection Service** | Road segment capacity checking, segment reservations | FastAPI, SQLAlchemy, Redis Streams |
+| **Messaging Service** | Driver inbox, persists notifications from booking events | FastAPI, SQLAlchemy, Redis Streams |
+| **Frontend** | Single-page application | React 19, TypeScript, Vite, Tailwind CSS, Mapbox GL JS |
+
+**Infrastructure:**
+
+| Component | Purpose | Port |
+|---|---|---|
+| **PostgreSQL** | Persistent storage (shared, one DB, logically isolated per service) | :5432 |
+| **Redis** | Event streaming (Redis Streams) and caching | :6379 |
+| **OSRM** | Route computation engine (used by Routes Service) | :5000 |
+| **pgAdmin** | PostgreSQL web UI | :5050 |
+| **RedisInsight** | Redis web UI (streams, keys, consumer groups) | :5540 |
 
 ## Prerequisites
 
@@ -35,10 +46,23 @@ API Gateway (FastAPI :8000)
 - [Node.js 22+](https://nodejs.org/) (for frontend dev and git hooks)
 - [uv](https://docs.astral.sh/uv/) (Python package manager, used by all services)
 - [Ruff](https://docs.astral.sh/ruff/) (Python linter/formatter)
+- A [Mapbox](https://www.mapbox.com/) access token (free tier, for map rendering)
 
 ## Getting Started
 
-### 1. Install git hooks
+### 1. Set environment variables
+
+```bash
+# macOS / Linux
+export MAPBOX_TOKEN=your-mapbox-token
+
+# Windows (PowerShell)
+$env:MAPBOX_TOKEN="your-mapbox-token"
+```
+
+The token is passed to the BFF at Docker build time for the frontend map. Without it, the map will not render.
+
+### 2. Install git hooks
 
 ```bash
 npm install
@@ -46,15 +70,15 @@ npm install
 
 This installs [Husky](https://typicode.github.io/husky/) pre-commit hooks that automatically lint and format staged files on every commit.
 
-### 2. Start the full stack
+### 3. Start the full stack
 
 ```bash
 docker compose up --build
 ```
 
-This starts all services, PostgreSQL (:5432), pgAdmin (:5050), and runs database migrations.
+This starts all services, PostgreSQL (:5432), Redis (:6379), OSRM (:5000), pgAdmin (:5050), RedisInsight (:5540), and runs database migrations.
 
-### 3. Frontend development (with hot reload)
+### 4. Frontend development (with hot reload)
 
 ```bash
 cd services/bff/traffic-frontend

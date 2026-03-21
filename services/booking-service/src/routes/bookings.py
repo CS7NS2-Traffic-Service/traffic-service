@@ -1,12 +1,7 @@
 from dependencies import get_db_connection
 from fastapi import APIRouter, Depends, Header, HTTPException
 from schemas import BookingResponse, CreateBookingDto
-from services.booking import (
-    cancel_booking,
-    create_booking,
-    get_booking,
-    list_bookings,
-)
+from services.booking import cancel_booking, create_booking, get_booking, list_bookings
 from sqlalchemy.orm import Session
 
 router = APIRouter()
