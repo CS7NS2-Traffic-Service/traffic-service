@@ -13,12 +13,6 @@ def check_segments_available(
     duration_seconds: int,
     db: Session,
 ) -> bool:
-    """Check whether all segments have capacity for the requested window.
-
-    For each segment, counts overlapping reservations and compares
-    against the segment's capacity. Returns False as soon as any
-    segment is at capacity.
-    """
     start_time = departure_time
     end_time = departure_time + timedelta(seconds=duration_seconds)
 
@@ -55,11 +49,6 @@ def create_reservations(
     duration_seconds: int,
     db: Session,
 ) -> None:
-    """Create a reservation on every segment for the given booking.
-
-    All reservations are inserted inside a savepoint so they either
-    all succeed or all roll back.
-    """
     start_time = departure_time
     end_time = departure_time + timedelta(seconds=duration_seconds)
 
@@ -80,7 +69,6 @@ def create_reservations(
 
 
 def delete_reservations(booking_id: str, db: Session) -> int:
-    """Delete all reservations tied to a booking. Returns delete count."""
     count = (
         db.query(SegmentReservation)
         .filter(SegmentReservation.booking_id == booking_id)
@@ -96,7 +84,6 @@ def get_segment_utilization(
     window_end: datetime,
     db: Session,
 ) -> dict[str, int]:
-    """Count overlapping reservations per segment for the given time window."""
     rows = (
         db.query(
             SegmentReservation.segment_id,
@@ -125,66 +112,44 @@ def assess_and_reserve(
     duration_seconds: int,
     db: Session,
 ) -> AssessRouteResponse:
-    """Atomically check capacity and create reservations.
-
-    Uses SELECT ... FOR UPDATE on the relevant road_segments rows to
-    serialise concurrent assessments that share any segment, preventing
-    double-booking race conditions.
-    """
     start_time = departure_time
     end_time = departure_time + timedelta(seconds=duration_seconds)
 
-    # Lock the relevant road_segments rows in a consistent order to
-    # avoid deadlocks (sorted by segment_id).
-    sorted_ids = sorted(segment_ids)
+    segment_ids = sorted(segment_ids)
 
-    segments = (
-        db.query(RoadSegment)
-        .filter(RoadSegment.segment_id.in_(sorted_ids))
-        .order_by(RoadSegment.segment_id)
-        .with_for_update()
-        .all()
-    )
+    capacity_by_segment_id = _calc_capcity_by_segment_id(segment_ids, db)
 
-    # Build a lookup for capacity
-    capacity_map: dict[str, int] = {}
-    for seg in segments:
-        capacity_map[str(seg.segment_id)] = seg.capacity or 0
-
-    # If any requested segment is missing from the database, reject.
-    if len(capacity_map) != len(sorted_ids):
+    if len(capacity_by_segment_id) != len(segment_ids):
         return AssessRouteResponse(
             booking_id=booking_id,
             route_id=route_id,
             segments_available=False,
         )
 
-    # Count overlapping reservations per segment
-    for sid in sorted_ids:
+    for segment_id in segment_ids:
         overlap_count = (
             db.query(func.count())
             .select_from(SegmentReservation)
             .filter(
-                SegmentReservation.segment_id == sid,
+                SegmentReservation.segment_id == segment_id,
                 SegmentReservation.time_window_start < end_time,
                 SegmentReservation.time_window_end > start_time,
             )
             .scalar()
         )
 
-        if overlap_count >= capacity_map[sid]:
+        if overlap_count >= capacity_by_segment_id[segment_id]:
             return AssessRouteResponse(
                 booking_id=booking_id,
                 route_id=route_id,
                 segments_available=False,
             )
 
-    # All segments have capacity -- create reservations
-    for sid in sorted_ids:
+    for segment_id in segment_ids:
         db.add(
             SegmentReservation(
                 booking_id=booking_id,
-                segment_id=sid,
+                segment_id=segment_id,
                 time_window_start=start_time,
                 time_window_end=end_time,
             )
@@ -196,3 +161,18 @@ def assess_and_reserve(
         route_id=route_id,
         segments_available=True,
     )
+
+
+def _calc_capcity_by_segment_id(segment_ids: list[str], db: Session):
+    segments = (
+        db.query(RoadSegment)
+        .filter(RoadSegment.segment_id.in_(segment_ids))
+        .order_by(RoadSegment.segment_id)
+        .with_for_update()
+        .all()
+    )
+
+    capacity_by_segment_id: dict[str, int] = {}
+    for segment in segments:
+        capacity_by_segment_id[str(segment.segment_id)] = segment.capacity or 0
+    return capacity_by_segment_id
