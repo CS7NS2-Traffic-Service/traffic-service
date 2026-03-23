@@ -1,6 +1,7 @@
 # Traffic Service
 
-A distributed traffic service built with a microservices architecture, using FastAPI, React, and PostgreSQL.
+A distributed traffic service built with a microservices architecture, using FastAPI, React, and
+PostgreSQL.
 
 ## Architecture
 
@@ -19,26 +20,26 @@ API Gateway (FastAPI :8000)
 
 **Services:**
 
-| Service | Purpose | Tech |
-|---|---|---|
-| **API Gateway** | Reverse proxy, JWT validation, rate limiting | FastAPI, httpx, Redis |
-| **BFF** | Serves the compiled React frontend | FastAPI |
-| **Driver Service** | Driver registration and authentication (JWT) | FastAPI, SQLAlchemy |
-| **Booking Service** | Booking lifecycle, publishes/consumes events via Redis Streams | FastAPI, SQLAlchemy, Redis Streams |
-| **Routes Service** | Route lookup/computation, road segment management | FastAPI, SQLAlchemy, OSRM |
-| **Conflict Detection Service** | Road segment capacity checking, segment reservations | FastAPI, SQLAlchemy, Redis Streams |
-| **Messaging Service** | Driver inbox, persists notifications from booking events | FastAPI, SQLAlchemy, Redis Streams |
-| **Frontend** | Single-page application | React 19, TypeScript, Vite, Tailwind CSS, Mapbox GL JS |
+| Service                        | Purpose                                                        | Tech                                                   |
+| ------------------------------ | -------------------------------------------------------------- | ------------------------------------------------------ |
+| **API Gateway**                | Reverse proxy, JWT validation, rate limiting                   | FastAPI, httpx, Redis                                  |
+| **BFF**                        | Serves the compiled React frontend                             | FastAPI                                                |
+| **Driver Service**             | Driver registration and authentication (JWT)                   | FastAPI, SQLAlchemy                                    |
+| **Booking Service**            | Booking lifecycle, publishes/consumes events via Redis Streams | FastAPI, SQLAlchemy, Redis Streams                     |
+| **Routes Service**             | Route lookup/computation, road segment management              | FastAPI, SQLAlchemy, OSRM                              |
+| **Conflict Detection Service** | Road segment capacity checking, segment reservations           | FastAPI, SQLAlchemy, Redis Streams                     |
+| **Messaging Service**          | Driver inbox, persists notifications from booking events       | FastAPI, SQLAlchemy, Redis Streams                     |
+| **Frontend**                   | Single-page application                                        | React 19, TypeScript, Vite, Tailwind CSS, Mapbox GL JS |
 
 **Infrastructure:**
 
-| Component | Purpose | Port |
-|---|---|---|
-| **PostgreSQL** | Persistent storage (shared, one DB, logically isolated per service) | :5432 |
-| **Redis** | Event streaming (Redis Streams) and caching | :6379 |
-| **OSRM** | Route computation engine (used by Routes Service) | :5000 |
-| **pgAdmin** | PostgreSQL web UI | :5050 |
-| **RedisInsight** | Redis web UI (streams, keys, consumer groups) | :5540 |
+| Component        | Purpose                                                             | Port  |
+| ---------------- | ------------------------------------------------------------------- | ----- |
+| **PostgreSQL**   | Persistent storage (shared, one DB, logically isolated per service) | :5432 |
+| **Redis**        | Event streaming (Redis Streams) and caching                         | :6379 |
+| **OSRM**         | Route computation engine (used by Routes Service)                   | :5000 |
+| **pgAdmin**      | PostgreSQL web UI                                                   | :5050 |
+| **RedisInsight** | Redis web UI (streams, keys, consumer groups)                       | :5540 |
 
 ## Prerequisites
 
@@ -52,15 +53,14 @@ API Gateway (FastAPI :8000)
 
 ### 1. Set environment variables
 
-```bash
-# macOS / Linux
-export MAPBOX_TOKEN=your-mapbox-token
+Add a .env file in the root of the project and set the MAPBOX_TOKEN
 
-# Windows (PowerShell)
-$env:MAPBOX_TOKEN="your-mapbox-token"
+```.env
+MAPBOX_TOKEN=your-mapbox-token
 ```
 
-The token is passed to the BFF at Docker build time for the frontend map. Without it, the map will not render.
+The token is passed to the BFF at Docker build time for the frontend map. Without it, the map will
+not render.
 
 ### 2. Install git hooks
 
@@ -68,7 +68,8 @@ The token is passed to the BFF at Docker build time for the frontend map. Withou
 npm install
 ```
 
-This installs [Husky](https://typicode.github.io/husky/) pre-commit hooks that automatically lint and format staged files on every commit.
+This installs [Husky](https://typicode.github.io/husky/) pre-commit hooks that automatically lint
+and format staged files on every commit.
 
 ### 3. Start the full stack
 
@@ -76,7 +77,8 @@ This installs [Husky](https://typicode.github.io/husky/) pre-commit hooks that a
 docker compose up --build
 ```
 
-This starts all services, PostgreSQL (:5432), Redis (:6379), OSRM (:5000), pgAdmin (:5050), RedisInsight (:5540), and runs database migrations.
+This starts all services, PostgreSQL (:5432), Redis (:6379), OSRM (:5000), pgAdmin (:5050),
+RedisInsight (:5540), and runs database migrations.
 
 ### 4. Frontend development (with hot reload)
 
@@ -86,7 +88,8 @@ npm install
 npm run dev
 ```
 
-The Vite dev server starts on `http://localhost:5173` and proxies `/api` requests to the API gateway at `localhost:8000`.
+The Vite dev server starts on `http://localhost:5173` and proxies `/api` requests to the API gateway
+at `localhost:8000`.
 
 ## Project Structure
 
@@ -135,7 +138,9 @@ npm run build                   # TypeScript type check + Vite build
 
 ## Database Migrations
 
-Migrations use [Alembic](https://alembic.sqlalchemy.org/) and live in `db/migrations/versions/`. A dedicated `db-migrate` container runs `alembic upgrade head` on startup (before any service that depends on it).
+Migrations use [Alembic](https://alembic.sqlalchemy.org/) and live in `db/migrations/versions/`. A
+dedicated `db-migrate` container runs `alembic upgrade head` on startup (before any service that
+depends on it).
 
 ### Creating a new migration
 
@@ -144,7 +149,8 @@ cd db
 alembic revision -m "describe your change"
 ```
 
-This creates a new file in `db/migrations/versions/`. Edit the generated `upgrade()` and `downgrade()` functions to define your schema change.
+This creates a new file in `db/migrations/versions/`. Edit the generated `upgrade()` and
+`downgrade()` functions to define your schema change.
 
 ### Running migrations manually
 
@@ -160,11 +166,11 @@ alembic upgrade head
 
 ### Key files
 
-| File | Purpose |
-|---|---|
-| `db/alembic.ini` | Alembic config (default DB URL, migration script location) |
-| `db/migrations/env.py` | Reads `DATABASE_URL` env var, falls back to `alembic.ini` |
-| `db/migrations/versions/` | Migration scripts (one per schema change) |
+| File                      | Purpose                                                    |
+| ------------------------- | ---------------------------------------------------------- |
+| `db/alembic.ini`          | Alembic config (default DB URL, migration script location) |
+| `db/migrations/env.py`    | Reads `DATABASE_URL` env var, falls back to `alembic.ini`  |
+| `db/migrations/versions/` | Migration scripts (one per schema change)                  |
 
 ## Adding a New Service
 
