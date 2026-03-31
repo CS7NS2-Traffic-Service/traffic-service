@@ -11,10 +11,10 @@ logging.basicConfig(level=logging.INFO)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from consumer import run_consumer
+    from consumer import run_consumer, run_updated_consumer
 
-    thread = threading.Thread(target=run_consumer, daemon=True)
-    thread.start()
+    threading.Thread(target=run_consumer, daemon=True).start()
+    threading.Thread(target=run_updated_consumer, daemon=True).start()
     yield
 
 

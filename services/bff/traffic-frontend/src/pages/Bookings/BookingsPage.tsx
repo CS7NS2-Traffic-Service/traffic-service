@@ -6,13 +6,18 @@ import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/StatusBadge"
 import { fetchBookings, cancelBooking, fetchBookingReservations, type Booking } from "@/api/bookings"
 
-const STAT_LABELS = ["PENDING", "APPROVED", "REJECTED", "CANCELLED"] as const
+const STAT_FILTERS: { label: string; statuses: string[] }[] = [
+  { label: "Pending", statuses: ["PENDING"] },
+  { label: "Approved", statuses: ["APPROVED"] },
+  { label: "Rejected", statuses: ["REJECTED"] },
+  { label: "Cancelled / Expired", statuses: ["CANCELLED", "EXPIRED"] },
+]
 
 const STAT_COLORS: Record<string, string> = {
-  PENDING: "text-yellow-600",
-  APPROVED: "text-green-600",
-  REJECTED: "text-red-600",
-  CANCELLED: "text-gray-500",
+  Pending: "text-yellow-600",
+  Approved: "text-green-600",
+  Rejected: "text-red-600",
+  "Cancelled / Expired": "text-gray-500",
 }
 
 function StatCard({ label, count, active, onClick }: {
@@ -116,13 +121,10 @@ function BookingsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["bookings"] }),
   })
 
-  const statusCounts = (bookings ?? []).reduce<Record<string, number>>((acc, b) => {
-    acc[b.status] = (acc[b.status] ?? 0) + 1
-    return acc
-  }, {})
+  const activeFilter = STAT_FILTERS.find((f) => f.label === activeStatus)
 
-  const filteredBookings = activeStatus
-    ? (bookings ?? []).filter((b) => b.status === activeStatus)
+  const filteredBookings = activeFilter
+    ? (bookings ?? []).filter((b) => activeFilter.statuses.includes(b.status))
     : bookings
 
   const toggleFilter = (status: string | null) => {
@@ -149,13 +151,13 @@ function BookingsPage() {
           active={activeStatus === null}
           onClick={() => toggleFilter(null)}
         />
-        {STAT_LABELS.map((status) => (
+        {STAT_FILTERS.map(({ label, statuses }) => (
           <StatCard
-            key={status}
-            label={status}
-            count={statusCounts[status] ?? 0}
-            active={activeStatus === status}
-            onClick={() => toggleFilter(status)}
+            key={label}
+            label={label}
+            count={(bookings ?? []).filter((b) => statuses.includes(b.status)).length}
+            active={activeStatus === label}
+            onClick={() => toggleFilter(label)}
           />
         ))}
       </div>

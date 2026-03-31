@@ -192,11 +192,11 @@ Goal: build out all remaining frontend pages so the full user journey is usable.
 
 ### 4.1 Routes Page (`/routes`)
 
-- [ ] Mapbox GL JS map component — deferred (requires API key)
+- [x] Mapbox GL JS map component (`RouteMap.tsx`)
 - [x] Origin/destination coordinate inputs
 - [x] Fetch route from `GET /api/routes/routes?origin_lat=...`
-- [ ] Render route geometry as polyline overlay on map — deferred
-- [ ] Color-code road segments by capacity — deferred
+- [x] Render route geometry as polyline overlay on map (`syncRouteLine()`)
+- [x] Color-code road segments by capacity (`utilizationColor()`)
 - [x] Display route result and segment list
 
 ### 4.2 Bookings Page (`/bookings`)
@@ -283,8 +283,9 @@ Goal: prove the system handles failures gracefully and load a realistic dataset.
 
 ### 6.3 Booking Expiry
 
-- [ ] Background task in Booking Service: expire bookings where `departure_time` has passed and status is still PENDING
-- [ ] Publish `booking.updated` with status EXPIRED
+- [x] Background task in Booking Service: expire bookings where `departure_time` has passed and status is still PENDING/APPROVED
+- [x] Publish `booking.updated` with status EXPIRED
+- [x] Conflict Detection Service consumes `booking.updated` to release reservations on CANCELLED/EXPIRED
 
 ### 6.4 Makefile
 

@@ -43,7 +43,6 @@ function RouteResultCard({
     const estimatedArrival = route.estimated_duration
       ? new Date(new Date(departureTime).getTime() + route.estimated_duration * 1000).toISOString()
       : undefined
-
     book({
       route_id: route.route_id,
       departure_time: departure,
