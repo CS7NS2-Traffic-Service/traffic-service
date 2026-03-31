@@ -35,6 +35,20 @@ export async function createBooking(data: CreateBookingDto): Promise<Booking> {
   return handleResponse<Booking>(response, "Failed to create booking")
 }
 
+export type SegmentReservation = {
+  reservation_id: string
+  segment_id: string
+  time_window_start: string
+  time_window_end: string
+}
+
+export async function fetchBookingReservations(bookingId: string): Promise<SegmentReservation[]> {
+  const response = await fetch(`/api/conflict-detection/bookings/${bookingId}/reservations`, {
+    headers: authHeaders(),
+  })
+  return handleResponse<SegmentReservation[]>(response, "Failed to fetch reservations")
+}
+
 export async function cancelBooking(bookingId: string): Promise<void> {
   const response = await fetch(`/api/booking/bookings/${bookingId}`, {
     method: "DELETE",

@@ -6,6 +6,8 @@ from schemas import AssessRouteResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+SEGMENT_OFFSET_SECONDS = 300
+
 
 def check_segments_available(
     segment_ids: list[str],
@@ -13,10 +15,11 @@ def check_segments_available(
     duration_seconds: int,
     db: Session,
 ) -> bool:
-    start_time = departure_time
-    end_time = departure_time + timedelta(seconds=duration_seconds)
+    for index, segment_id in enumerate(segment_ids):
+        offset = timedelta(seconds=SEGMENT_OFFSET_SECONDS * index)
+        start_time = departure_time + offset
+        end_time = start_time + timedelta(seconds=duration_seconds)
 
-    for segment_id in segment_ids:
         overlap_count = (
             db.query(func.count())
             .select_from(SegmentReservation)
@@ -49,12 +52,12 @@ def create_reservations(
     duration_seconds: int,
     db: Session,
 ) -> None:
-    start_time = departure_time
-    end_time = departure_time + timedelta(seconds=duration_seconds)
-
     nested = db.begin_nested()
     try:
-        for segment_id in segment_ids:
+        for index, segment_id in enumerate(segment_ids):
+            offset = timedelta(seconds=SEGMENT_OFFSET_SECONDS * index)
+            start_time = departure_time + offset
+            end_time = start_time + timedelta(seconds=duration_seconds)
             reservation = SegmentReservation(
                 booking_id=booking_id,
                 segment_id=segment_id,
@@ -112,12 +115,8 @@ def assess_and_reserve(
     duration_seconds: int,
     db: Session,
 ) -> AssessRouteResponse:
-    start_time = departure_time
-    end_time = departure_time + timedelta(seconds=duration_seconds)
-
-    segment_ids = sorted(segment_ids)
-
-    capacity_by_segment_id = _calc_capcity_by_segment_id(segment_ids, db)
+    sorted_ids = sorted(segment_ids)
+    capacity_by_segment_id = _calc_capcity_by_segment_id(sorted_ids, db)
 
     if len(capacity_by_segment_id) != len(segment_ids):
         return AssessRouteResponse(
@@ -126,7 +125,11 @@ def assess_and_reserve(
             segments_available=False,
         )
 
-    for segment_id in segment_ids:
+    for index, segment_id in enumerate(segment_ids):
+        offset = timedelta(seconds=SEGMENT_OFFSET_SECONDS * index)
+        start_time = departure_time + offset
+        end_time = start_time + timedelta(seconds=duration_seconds)
+
         overlap_count = (
             db.query(func.count())
             .select_from(SegmentReservation)
@@ -145,7 +148,10 @@ def assess_and_reserve(
                 segments_available=False,
             )
 
-    for segment_id in segment_ids:
+    for index, segment_id in enumerate(segment_ids):
+        offset = timedelta(seconds=SEGMENT_OFFSET_SECONDS * index)
+        start_time = departure_time + offset
+        end_time = start_time + timedelta(seconds=duration_seconds)
         db.add(
             SegmentReservation(
                 booking_id=booking_id,

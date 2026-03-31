@@ -30,3 +30,10 @@ class SegmentUtilizationItem(BaseModel):
 
 class SegmentUtilizationResponse(BaseModel):
     utilization: list[SegmentUtilizationItem]
+
+
+class ReservationItem(BaseModel):
+    reservation_id: str
+    segment_id: str
+    time_window_start: datetime
+    time_window_end: datetime
