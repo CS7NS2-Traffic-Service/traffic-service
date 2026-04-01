@@ -1,8 +1,8 @@
 import logging
 import time
-from datetime import datetime, timezone
 
 from database import SessionLocal
+from domain import BookingStatus, utcnow_naive
 from events import publish_event
 from models.booking import Booking
 
@@ -17,27 +17,32 @@ def run_expiry_loop() -> None:
         try:
             db = SessionLocal()
             try:
+                now = utcnow_naive()
                 expired = (
                     db.query(Booking)
                     .filter(
-                        Booking.departure_time < datetime.now(timezone.utc),
-                        Booking.status.in_(['PENDING', 'APPROVED']),
+                        Booking.departure_time < now,
+                        Booking.status.in_(
+                            [BookingStatus.PENDING.value, BookingStatus.APPROVED.value]
+                        ),
                     )
                     .all()
                 )
-                for booking in expired:
-                    booking.status = 'EXPIRED'
+                if expired:
+                    for booking in expired:
+                        booking.status = BookingStatus.EXPIRED.value
                     db.commit()
 
-                    publish_event(
-                        'booking.updated',
-                        {
-                            'booking_id': str(booking.booking_id),
-                            'driver_id': str(booking.driver_id),
-                            'status': 'EXPIRED',
-                        },
-                    )
-                    logger.info('Expired booking %s', booking.booking_id)
+                    for booking in expired:
+                        publish_event(
+                            'booking.updated',
+                            {
+                                'booking_id': str(booking.booking_id),
+                                'driver_id': str(booking.driver_id),
+                                'status': BookingStatus.EXPIRED.value,
+                            },
+                        )
+                        logger.info('Expired booking %s', booking.booking_id)
             finally:
                 db.close()
         except Exception:

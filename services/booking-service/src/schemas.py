@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from domain import BookingStatus
 from pydantic import BaseModel
 
 
@@ -15,6 +16,6 @@ class BookingResponse(BaseModel):
     route_id: str
     departure_time: datetime
     estimated_arrival: datetime | None
-    status: str
+    status: BookingStatus
     created_at: datetime | None
     expires_at: datetime | None

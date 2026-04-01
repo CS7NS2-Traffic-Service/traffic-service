@@ -2,9 +2,11 @@ import json
 import logging
 import os
 import time
+from uuid import UUID
 
 import redis
 from database import SessionLocal
+from domain import BookingStatus, parse_status, transition
 from events import publish_event
 from models.booking import Booking
 
@@ -29,20 +31,34 @@ def ensure_consumer_group() -> None:
 
 
 def handle_route_assessed(data: dict) -> None:
-    booking_id = data['booking_id']
-    segments_available = data['segments_available']
+    booking_id = data.get('booking_id')
+    segments_available = data.get('segments_available')
+    if booking_id is None or segments_available is None:
+        logger.warning('Invalid route.assessed payload: %s', data)
+        return
+    try:
+        booking_uuid = UUID(str(booking_id))
+    except ValueError:
+        logger.warning('Invalid booking_id in route.assessed: %s', booking_id)
+        return
 
     db = SessionLocal()
     try:
-        booking = db.query(Booking).filter(Booking.booking_id == booking_id).first()
+        booking = db.query(Booking).filter(Booking.booking_id == booking_uuid).first()
         if booking is None:
             logger.warning('Booking %s not found', booking_id)
             return
-        if booking.status != 'PENDING':
-            logger.info('Booking %s already %s', booking_id, booking.status)
+        current = parse_status(booking.status)
+        if current != BookingStatus.PENDING:
+            logger.info('Booking %s already %s', booking_id, current)
             return
 
-        booking.status = 'APPROVED' if segments_available else 'REJECTED'
+        target = (
+            BookingStatus.APPROVED
+            if bool(segments_available)
+            else BookingStatus.REJECTED
+        )
+        booking.status = transition(current, target).value
         db.commit()
         db.refresh(booking)
 

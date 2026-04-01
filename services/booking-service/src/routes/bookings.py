@@ -1,4 +1,5 @@
 from dependencies import get_db_connection
+from domain import BookingStatus
 from fastapi import APIRouter, Depends, Header, HTTPException
 from schemas import BookingResponse, CreateBookingDto
 from services.booking import cancel_booking, create_booking, get_booking, list_bookings
@@ -14,7 +15,7 @@ def _to_response(booking) -> BookingResponse:
         route_id=str(booking.route_id),
         departure_time=booking.departure_time,
         estimated_arrival=booking.estimated_arrival,
-        status=booking.status,
+        status=BookingStatus(booking.status),
         created_at=booking.created_at,
         expires_at=booking.expires_at,
     )
@@ -26,13 +27,16 @@ def create(
     x_driver_id: str = Header(...),
     db: Session = Depends(get_db_connection),
 ):
-    booking = create_booking(
-        driver_id=x_driver_id,
-        route_id=dto.route_id,
-        departure_time=dto.departure_time,
-        estimated_arrival=dto.estimated_arrival,
-        db=db,
-    )
+    try:
+        booking = create_booking(
+            driver_id=x_driver_id,
+            route_id=dto.route_id,
+            departure_time=dto.departure_time,
+            estimated_arrival=dto.estimated_arrival,
+            db=db,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
     return _to_response(booking)
 
 
@@ -62,10 +66,10 @@ def cancel(
     x_driver_id: str = Header(...),
     db: Session = Depends(get_db_connection),
 ):
-    booking = cancel_booking(booking_id, x_driver_id, db)
+    try:
+        booking = cancel_booking(booking_id, x_driver_id, db)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
     if booking is None:
-        raise HTTPException(
-            status_code=404,
-            detail='Booking not found or already cancelled',
-        )
+        raise HTTPException(status_code=404, detail='Booking not found')
     return _to_response(booking)
