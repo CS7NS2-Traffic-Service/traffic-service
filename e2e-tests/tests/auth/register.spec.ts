@@ -13,8 +13,8 @@ test('register new driver', async ({ page }) => {
   await page.getByPlaceholder('Email').fill(email)
   await page.getByPlaceholder('Password').fill('secretpassword')
   await page.getByPlaceholder('License Number').fill('D12345')
-  await page.getByPlaceholder('Region').fill('Dublin')
-  await page.locator('select').selectOption('Car')
+  await page.locator('select').nth(0).selectOption('CAR')
+  await page.locator('select').nth(1).selectOption('Ireland')
 
   await page.locator('form').getByRole('button', { name: 'Register' }).click()
 

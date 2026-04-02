@@ -8,6 +8,7 @@ import type { RegisterDriverDto } from "@/api/auth"
 import { useDriverStore } from "@/stores/driverStore"
 
 const VEHICLE_TYPES = ["CAR", "MOTORCYCLE", "TRUCK", "HGV"] as const
+const REGIONS = ["Ireland", "Northern Ireland"] as const
 
 function RegisterForm() {
   const navigate = useNavigate()
@@ -96,10 +97,16 @@ function RegisterForm() {
           )}
         </div>
         <div className="space-y-1">
-          <Input
-            placeholder="Region"
+          <select
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+            defaultValue=""
             {...register("region", { required: "Region is required" })}
-          />
+          >
+            <option value="" disabled>Region</option>
+            {REGIONS.map((region) => (
+              <option key={region} value={region}>{region}</option>
+            ))}
+          </select>
           {errors.region && (
             <p className="text-sm text-red-500">{errors.region.message}</p>
           )}
