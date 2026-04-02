@@ -24,7 +24,7 @@ function RegisterForm() {
     registerDriver(data, {
       onSuccess: (response) => {
         login(response.driver, response.access_token)
-        navigate("/")
+        navigate("/routes")
       },
     })
   }

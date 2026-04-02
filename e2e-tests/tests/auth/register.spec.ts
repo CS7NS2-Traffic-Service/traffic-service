@@ -18,7 +18,7 @@ test('register new driver', async ({ page }) => {
 
   await page.locator('form').getByRole('button', { name: 'Register' }).click()
 
-  await expect(page).toHaveURL('/')
+  await expect(page).toHaveURL('/routes')
 
   await expect(page.locator('[data-slot="dropdown-menu-trigger"]')).toContainText(driverName)
 
