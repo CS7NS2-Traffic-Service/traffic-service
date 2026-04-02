@@ -22,4 +22,12 @@ test('register new driver', async ({ page }) => {
 
   await expect(page.locator('[data-slot="dropdown-menu-trigger"]')).toContainText(driverName)
 
+  const rawStoreEntry = await page.evaluate(() => localStorage.getItem('driver-store'))
+
+  expect(rawStoreEntry).not.toBeNull()
+
+  const storeEntry = JSON.parse(rawStoreEntry!)
+
+  expect(storeEntry.state.token).not.toBeNull();
+
 })
