@@ -172,6 +172,63 @@ alembic upgrade head
 | `db/migrations/env.py`    | Reads `DATABASE_URL` env var, falls back to `alembic.ini`  |
 | `db/migrations/versions/` | Migration scripts (one per schema change)                  |
 
+## E2E Testing
+
+End-to-end tests use [Playwright](https://playwright.dev/) and live in `e2e-tests/`. They test the
+full stack through the browser — from the React frontend through the API Gateway to all downstream
+services and the database.
+
+Traces, screenshots, and videos are recorded for every test run and can be viewed in the Playwright
+HTML report.
+
+### Running the tests
+
+The full docker-compose stack must be running before executing tests:
+
+```bash
+docker compose up --build -d
+```
+
+Then run the tests:
+
+```bash
+cd e2e-tests
+npm test
+```
+
+### Viewing traces
+
+After a run, open the HTML report:
+
+```bash
+cd e2e-tests
+npm run report
+```
+
+This opens the Playwright trace viewer in your browser. Click any test to see a timeline of every
+action, screenshot at each step, and all network requests made during that test.
+
+### Test structure
+
+```
+e2e-tests/
+├── playwright.config.ts   # baseURL, trace/screenshot/video settings
+└── tests/
+    ├── auth/              # Registration and login flows
+    ├── bookings/          # Booking lifecycle tests
+    └── inbox/             # Notification tests
+```
+
+### Strategy
+
+| Test type | Tool | Purpose |
+| --------- | ---- | ------- |
+| UI flows (register, login, book route) | Browser | Validates the full user journey through the UI |
+| Concurrent bookings / conflict detection | API (`request` fixture) | Precise control over parallel requests without browser overhead |
+
+Tests are not run on every commit (the stack is too heavy for pre-commit hooks). They run on
+pre-push or in CI.
+
 ## Adding a New Service
 
 1. Create the service under `services/<name>/`
