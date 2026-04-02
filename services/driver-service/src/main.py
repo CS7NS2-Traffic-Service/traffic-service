@@ -1,7 +1,31 @@
+from contextlib import asynccontextmanager
+
+from dependencies import get_db_connection
 from fastapi import FastAPI
 from routes import auth, drivers
+from services.auth import register
 
-app = FastAPI()
+
+def seed_test_driver():
+    db = next(get_db_connection())
+    register(
+        name='Test Driver',
+        email='test@example.com',
+        password='password123',
+        license_number='TEST123',
+        vehicle_type='CAR',
+        region='Dublin',
+        db=db,
+    )
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    seed_test_driver()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 @app.get('/health')

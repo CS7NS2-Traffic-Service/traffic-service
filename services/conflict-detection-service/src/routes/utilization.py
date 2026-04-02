@@ -1,6 +1,4 @@
-from collections.abc import Generator
-
-from database import SessionLocal
+from dependencies import get_db_connection
 from fastapi import APIRouter, Depends
 from schemas import (
     SegmentUtilizationItem,
@@ -13,18 +11,10 @@ from sqlalchemy.orm import Session
 router = APIRouter()
 
 
-def get_db() -> Generator[Session, None, None]:
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 @router.post('/utilization', response_model=SegmentUtilizationResponse)
 def utilization(
     body: SegmentUtilizationRequest,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_connection),
 ) -> SegmentUtilizationResponse:
     counts = get_segment_utilization(
         segment_ids=body.segment_ids,

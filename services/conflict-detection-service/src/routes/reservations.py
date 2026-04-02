@@ -1,6 +1,4 @@
-from collections.abc import Generator
-
-from database import SessionLocal
+from dependencies import get_db_connection
 from fastapi import APIRouter, Depends
 from models.segment_reservation import SegmentReservation
 from schemas import ReservationItem
@@ -9,21 +7,13 @@ from sqlalchemy.orm import Session
 router = APIRouter()
 
 
-def get_db() -> Generator[Session, None, None]:
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 @router.get(
     '/bookings/{booking_id}/reservations',
     response_model=list[ReservationItem],
 )
 def get_booking_reservations(
     booking_id: str,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_connection),
 ) -> list[ReservationItem]:
     rows = (
         db.query(SegmentReservation)
