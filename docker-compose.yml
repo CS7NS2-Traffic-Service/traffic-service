@@ -10,7 +10,7 @@ services:
       SERVICE_ROUTES: http://routes-service:8083
       SERVICE_CONFLICT-DETECTION: http://conflict-detection-service:8084
       SERVICE_MESSAGING: http://messaging-service:8085
-      JWT_SECRET_KEY: super-secret-key-change-in-prod
+      JWT_SECRET_KEY: super-secret-key
       REDIS_URL: redis://redis:6379
     depends_on:
       - bff
@@ -35,7 +35,7 @@ services:
       - "8081"
     environment:
       DATABASE_URL: postgresql://traffic:traffic@postgres:5432/traffic
-      JWT_SECRET_KEY: super-secret-key-change-in-prod
+      JWT_SECRET_KEY: super-secret-key
     depends_on:
       db-migrate:
         condition: service_completed_successfully
@@ -124,7 +124,14 @@ services:
       - ./osrm-data:/data
     command: osrm-routed --algorithm mld /data/ireland-and-northern-ireland-latest.osrm
     healthcheck:
-      test: ["CMD", "perl", "-MIO::Socket::INET", "-e", "exit(IO::Socket::INET->new('localhost:5000') ? 0 : 1)"]
+      test:
+        [
+          "CMD",
+          "perl",
+          "-MIO::Socket::INET",
+          "-e",
+          "exit(IO::Socket::INET->new('localhost:5000') ? 0 : 1)",
+        ]
       interval: 5s
       timeout: 5s
       retries: 12
