@@ -24,7 +24,7 @@ services:
     build:
       context: services/bff
       args:
-        MAPBOX_TOKEN: ${MAPBOX_TOKEN:-}
+        VITE_MAPBOX_TOKEN: ${MAPBOX_TOKEN:-}
     expose:
       - "8080"
 
