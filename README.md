@@ -48,6 +48,8 @@ API Gateway (FastAPI :8000)
 - [uv](https://docs.astral.sh/uv/) (Python package manager, used by all services)
 - [Ruff](https://docs.astral.sh/ruff/) (Python linter/formatter)
 - A [Mapbox](https://www.mapbox.com/) access token (free tier, for map rendering)
+- [minikube](https://minikube.sigs.k8s.io/) and [kubectl](https://kubernetes.io/docs/tasks/tools/) (for Kubernetes deployment)
+- [Helm](https://helm.sh/) (for Kubernetes chart management)
 
 ## Getting Started
 
@@ -228,6 +230,140 @@ e2e-tests/
 
 Tests are not run on every commit (the stack is too heavy for pre-commit hooks). They run on
 pre-push or in CI.
+
+## Kubernetes Deployment
+
+The application can be deployed to a Kubernetes cluster using a Helm chart located in `charts/`.
+
+### Architecture
+
+All services run as Kubernetes Deployments with ClusterIP Services for internal communication. The
+API Gateway is the only service exposed externally via NodePort on port `30080`. Shared configuration
+(database URL, Redis URL, JWT secret) is managed through a single ConfigMap (`traffic-config`).
+
+```
+charts/
+├── Chart.yaml
+└── templates/
+    ├── configmap.yaml                    # Shared env vars for all services
+    ├── api-gateway/                      # NodePort :30080 (external entry point)
+    ├── bff/                              # ClusterIP :8080
+    ├── driver-service/                   # ClusterIP :8081
+    ├── booking-service/                  # ClusterIP :8082
+    ├── routes-service/                   # ClusterIP :8083
+    ├── conflict-detection-service/       # ClusterIP :8084
+    ├── messaging-service/                # ClusterIP :8085
+    ├── postgres/                         # ClusterIP :5432 + PersistentVolumeClaim
+    ├── redis/                            # ClusterIP :6379
+    ├── osrm/                             # ClusterIP :5000
+    ├── migrations/                       # Job (runs Alembic migrations)
+    └── admin/
+        ├── pgadmin/                      # ClusterIP :80
+        └── redisinsight/                 # ClusterIP :5540
+```
+
+Each application service includes:
+- A liveness probe on `/health` (Kubernetes restarts the pod if it fails)
+- A readiness probe on `/health` (Kubernetes stops routing traffic until the pod is ready)
+- An init container that waits for database migrations to complete before starting
+
+### Prerequisites
+
+1. Start minikube:
+
+```bash
+minikube start
+```
+
+2. Point your Docker CLI at minikube's Docker daemon:
+
+```bash
+eval $(minikube docker-env)
+```
+
+All `docker build` commands in the steps below must run in a shell where this eval has been executed,
+otherwise the images will be built into your local daemon and minikube won't be able to find them.
+
+### Build images
+
+Build all service images into minikube's Docker daemon:
+
+```bash
+docker build -t api-gateway:latest services/api-gateway/
+docker build -t bff:latest --build-arg VITE_MAPBOX_TOKEN=$MAPBOX_TOKEN services/bff/
+docker build -t driver-service:latest services/driver-service/
+docker build -t booking-service:latest services/booking-service/
+docker build -t routes-service:latest services/routes-service/
+docker build -t conflict-detection-service:latest services/conflict-detection-service/
+docker build -t messaging-service:latest services/messaging-service/
+docker build -t db-migrate:latest db/
+docker build -t osrm-ireland:latest osrm-data/
+```
+
+All images use `imagePullPolicy: Never` so Kubernetes uses the locally built images instead of
+trying to pull from a registry.
+
+### Deploy
+
+```bash
+helm install traffic-service ./charts
+```
+
+Watch pods come up:
+
+```bash
+kubectl get pods -w
+```
+
+The startup order is handled by init containers:
+1. Postgres starts first
+2. The `db-migrate` Job waits for Postgres, then runs Alembic migrations
+3. All application services wait for migrations to complete, then start
+
+### Access the application
+
+On macOS the minikube IP is not directly reachable from the host. Use the built-in tunnel:
+
+```bash
+minikube service api-gateway
+```
+
+This opens the API Gateway in your browser automatically.
+
+### Access admin tools
+
+pgAdmin and RedisInsight are internal services. Access them via port-forwarding:
+
+```bash
+kubectl port-forward deployment/pgadmin 8888:80
+kubectl port-forward deployment/redisinsight 5540:5540
+```
+
+- pgAdmin: `http://localhost:8888` (login: `admin@admin.com` / `admin`)
+- RedisInsight: `http://localhost:5540` (connect to `redis://redis:6379`)
+
+### Updating after code changes
+
+After modifying a service, rebuild its image and restart the deployment:
+
+```bash
+eval $(minikube docker-env)
+docker build -t <service-name>:latest services/<service-name>/
+kubectl rollout restart deployment/<service-name>
+```
+
+Since all images use the `latest` tag, Kubernetes won't detect a change automatically.
+`rollout restart` forces the pods to recreate with the new image.
+
+### Tear down
+
+```bash
+helm uninstall traffic-service
+kubectl delete pvc --all
+```
+
+`helm uninstall` removes all resources except PersistentVolumeClaims (to prevent accidental data
+loss). Delete PVCs separately to fully clean up.
 
 ## Adding a New Service
 
