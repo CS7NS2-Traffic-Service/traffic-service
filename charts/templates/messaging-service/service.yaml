@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: messaging-service
+  namespace: default
+spec:
+  selector:
+    app: messaging-service
+  type: ClusterIP
+  ports:
+    - name: messaging-service
+      port: 8085
+      targetPort: 8085
+---

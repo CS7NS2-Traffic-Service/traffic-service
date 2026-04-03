@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: booking-service
+  namespace: default
+spec:
+  selector:
+    app: booking-service
+  type: ClusterIP
+  ports:
+    - name: booking-service
+      port: 8082
+      targetPort: 8082
+---

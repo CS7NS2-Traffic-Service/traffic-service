@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: routes-service
+  namespace: default
+  labels:
+    app: routes-service
+spec:
+  selector:
+    matchLabels:
+      app: routes-service
+  replicas: 1
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: routes-service
+      labels:
+        app: routes-service
+    spec:
+      initContainers:
+        - name: wait-for-migrations
+          image: postgres:16
+          command:
+            - sh
+            - -c
+            - |
+              until psql $DATABASE_URL -c "SELECT 1 FROM drivers LIMIT 1" > /dev/null 2>&1; do
+                echo "waiting for migrations..."
+                sleep 2
+              done
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: traffic-config
+                  key: DATABASE_URL
+      containers:
+        - name: routes-service
+          image: routes-service:latest
+          imagePullPolicy: Never
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 100m
+              memory: 100Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8083
+            initialDelaySeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8083
+            initialDelaySeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+            periodSeconds: 10
+          envFrom:
+            - configMapRef:
+                name: traffic-config
+          ports:
+            - containerPort: 8083
+              name: routes-service
+---

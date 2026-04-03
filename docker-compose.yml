@@ -8,7 +8,6 @@ services:
       SERVICE_DRIVER: http://driver-service:8081
       SERVICE_BOOKING: http://booking-service:8082
       SERVICE_ROUTES: http://routes-service:8083
-      SERVICE_CONFLICT-DETECTION: http://conflict-detection-service:8084
       SERVICE_MESSAGING: http://messaging-service:8085
       JWT_SECRET_KEY: super-secret-key
       REDIS_URL: redis://redis:6379
