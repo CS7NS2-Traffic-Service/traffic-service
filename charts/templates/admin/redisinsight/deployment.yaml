@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redisinsight
+  namespace: default
+  labels:
+    app: redisinsight
+spec:
+  selector:
+    matchLabels:
+      app: redisinsight
+  replicas: 1
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: redisinsight
+      labels:
+        app: redisinsight
+    spec:
+      initContainers:
+        - name: wait-for-redis
+          image: redis:7-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until redis-cli -h redis ping; do
+                echo "waiting for redis..."
+                sleep 2
+              done
+      containers:
+        - name: redisinsight
+          image: redis/redisinsight:latest
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          ports:
+            - containerPort: 5540
+              name: redisinsight
+---
