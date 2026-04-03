@@ -5,7 +5,7 @@ metadata:
   namespace: default
 spec:
   selector:
-    app: conflict-detection-service
+    app: conflict-detect
   type: ClusterIP
   ports:
     - name: conflict-detection-service
