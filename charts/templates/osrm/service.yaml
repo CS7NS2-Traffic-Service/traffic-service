@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: osrm
+  namespace: default
+spec:
+  selector:
+    app: osrm
+  type: ClusterIP
+  ports:
+    - name: osrm
+      port: 5000
+      targetPort: 5000
+---

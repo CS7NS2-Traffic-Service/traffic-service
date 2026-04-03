@@ -36,7 +36,10 @@ spec:
               done
           env:
             - name: DATABASE_URL
-              value: postgresql://traffic:traffic@postgres:5432/traffic
+              valueFrom:
+                configMapKeyRef:
+                  name: traffic-config
+                  key: DATABASE_URL
       containers:
         - name: driver-service
           image: driver-service:latest
