@@ -24,8 +24,7 @@ spec:
     spec:
       containers:
         - name: api-gateway
-          image: api-gateway:latest
-          imagePullPolicy: Never
+          image: ghcr.io/cs7ns2-traffic-service/traffic-service/api-gateway:latest
           resources:
             requests:
               cpu: 100m

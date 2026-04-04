@@ -41,8 +41,7 @@ spec:
                   key: DATABASE_URL
       containers:
         - name: routes-service
-          image: routes-service:latest
-          imagePullPolicy: Never
+          image: ghcr.io/cs7ns2-traffic-service/traffic-service/routes-service:latest
           resources:
             requests:
               cpu: 100m

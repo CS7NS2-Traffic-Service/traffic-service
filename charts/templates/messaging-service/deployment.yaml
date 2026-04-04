@@ -41,8 +41,7 @@ spec:
                   key: DATABASE_URL
       containers:
         - name: messaging
-          image: messaging-service:latest
-          imagePullPolicy: Never
+          image: ghcr.io/cs7ns2-traffic-service/traffic-service/messaging-service:latest
           resources:
             requests:
               cpu: 100m

@@ -18,8 +18,7 @@ spec:
               done
       containers:
         - name: db-migrate
-          image: db-migrate:latest
-          imagePullPolicy: Never
+          image: ghcr.io/cs7ns2-traffic-service/traffic-service/db-migrate:latest
           command: ["alembic", "upgrade", "head"]
           env:
             - name: DATABASE_URL
