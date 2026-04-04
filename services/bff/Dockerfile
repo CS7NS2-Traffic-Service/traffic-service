@@ -9,7 +9,6 @@ COPY traffic-frontend/package.json traffic-frontend/package-lock.json ./
 RUN npm ci
 
 COPY traffic-frontend/ ./
-RUN ls -la src/ && ls -la src/lib/ && ls -la tsconfig*.json
 RUN npm run build
 
 FROM python:3.13-slim

@@ -1,0 +1,6 @@
+.git
+.venv
+.ruff_cache
+node_modules
+dist
+*.local
