@@ -9,7 +9,7 @@ spec:
   selector:
     matchLabels:
       app: booking-service
-  replicas: 1
+  replicas: {{ .Values.replicaCount.bookingService }}
   strategy:
     rollingUpdate:
       maxSurge: 25%
@@ -41,7 +41,7 @@ spec:
                   key: DATABASE_URL
       containers:
         - name: booking-service
-          image: ghcr.io/cs7ns2-traffic-service/traffic-service/booking-service:latest
+          image: {{ .Values.image.registry }}/booking-service:{{ .Values.image.tag }}
           resources:
             requests:
               cpu: 100m
@@ -52,7 +52,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /health
-              port: 8082
+              port: {{ .Values.ports.bookingService }}
             initialDelaySeconds: 15
             timeoutSeconds: 5
             failureThreshold: 3
@@ -60,7 +60,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /health
-              port: 8082
+              port: {{ .Values.ports.bookingService }}
             initialDelaySeconds: 5
             timeoutSeconds: 2
             failureThreshold: 3
@@ -69,6 +69,6 @@ spec:
             - configMapRef:
                 name: traffic-config
           ports:
-            - containerPort: 8082
+            - containerPort: {{ .Values.ports.bookingService }}
               name: booking-service
 ---

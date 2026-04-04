@@ -9,7 +9,7 @@ spec:
   type: NodePort
   ports:
     - name: api-gateway
-      port: 8000
-      targetPort: 8000
-      nodePort: 30080
+      port: {{ .Values.ports.apiGateway }}
+      targetPort: {{ .Values.ports.apiGateway }}
+      nodePort: {{ .Values.ports.nodePort }}
 ---

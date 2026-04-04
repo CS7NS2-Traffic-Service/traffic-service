@@ -1,0 +1,22 @@
+image:
+  registry: ghcr.io/cs7ns2-traffic-service/traffic-service
+  tag: latest
+
+replicaCount:
+  apiGateway: 1
+  bff: 1
+  driverService: 1
+  bookingService: 1
+  routesService: 1
+  conflictDetection: 1
+  messagingService: 1
+
+ports:
+  apiGateway: 8000
+  bff: 8080
+  driverService: 8081
+  bookingService: 8082
+  routesService: 8083
+  conflictDetection: 8084
+  messagingService: 8085
+  nodePort: 30080

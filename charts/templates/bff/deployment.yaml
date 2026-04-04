@@ -9,7 +9,7 @@ spec:
   selector:
     matchLabels:
       app: bff
-  replicas: 1
+  replicas: {{ .Values.replicaCount.bff }}
   strategy:
     rollingUpdate:
       maxSurge: 25%
@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: bff
-          image: ghcr.io/cs7ns2-traffic-service/traffic-service/bff:latest
+          image: {{ .Values.image.registry }}/bff:{{ .Values.image.tag }}
           resources:
             requests:
               cpu: 100m
@@ -35,7 +35,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /health
-              port: 8080
+              port: {{ .Values.ports.bff }}
             initialDelaySeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
@@ -43,12 +43,12 @@ spec:
           readinessProbe:
             httpGet:
               path: /health
-              port: 8080
+              port: {{ .Values.ports.bff }}
             initialDelaySeconds: 5
             timeoutSeconds: 2
             failureThreshold: 3
             periodSeconds: 10
           ports:
-            - containerPort: 8080
+            - containerPort: {{ .Values.ports.bff }}
               name: bff
 ---

@@ -9,6 +9,6 @@ spec:
   type: ClusterIP
   ports:
     - name: booking-service
-      port: 8082
-      targetPort: 8082
+      port: {{ .Values.ports.bookingService }}
+      targetPort: {{ .Values.ports.bookingService }}
 ---

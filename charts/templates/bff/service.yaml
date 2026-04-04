@@ -9,6 +9,6 @@ spec:
   type: ClusterIP
   ports:
     - name: bff
-      port: 8080
-      targetPort: 8080
+      port: {{ .Values.ports.bff }}
+      targetPort: {{ .Values.ports.bff }}
 ---

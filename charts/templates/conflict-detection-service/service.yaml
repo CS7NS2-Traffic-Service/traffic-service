@@ -9,6 +9,6 @@ spec:
   type: ClusterIP
   ports:
     - name: conflict-detection-service
-      port: 8084
-      targetPort: 8084
+      port: {{ .Values.ports.conflictDetection }}
+      targetPort: {{ .Values.ports.conflictDetection }}
 ---

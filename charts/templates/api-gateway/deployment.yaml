@@ -9,7 +9,7 @@ spec:
   selector:
     matchLabels:
       app: api-gateway
-  replicas: 1
+  replicas: {{ .Values.replicaCount.apiGateway }}
   strategy:
     rollingUpdate:
       maxSurge: 25%
@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: api-gateway
-          image: ghcr.io/cs7ns2-traffic-service/traffic-service/api-gateway:latest
+          image: {{ .Values.image.registry }}/api-gateway:{{ .Values.image.tag }}
           resources:
             requests:
               cpu: 100m
@@ -35,7 +35,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /health
-              port: 8000
+              port: {{ .Values.ports.apiGateway }}
             initialDelaySeconds: 20
             timeoutSeconds: 5
             successThreshold: 1
@@ -44,7 +44,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /health
-              port: 8000
+              port: {{ .Values.ports.apiGateway }}
             initialDelaySeconds: 5
             timeoutSeconds: 2
             successThreshold: 1
@@ -54,6 +54,6 @@ spec:
             - configMapRef:
                 name: traffic-config
           ports:
-            - containerPort: 8000
+            - containerPort: {{ .Values.ports.apiGateway }}
               name: api-gateway
 ---

@@ -1,0 +1,8 @@
+replicaCount:
+  apiGateway: 2
+  bff: 2
+  driverService: 2
+  bookingService: 2
+  routesService: 2
+  conflictDetection: 2
+  messagingService: 2

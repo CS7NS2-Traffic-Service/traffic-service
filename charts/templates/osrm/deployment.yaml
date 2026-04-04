@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: osrm
-          image: ghcr.io/cs7ns2-traffic-service/traffic-service/osrm-ireland:latest
+          image: {{ .Values.image.registry }}/osrm-ireland:{{ .Values.image.tag }}
           imagePullPolicy: Never
           resources:
             requests:

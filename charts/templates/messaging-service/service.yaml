@@ -9,6 +9,6 @@ spec:
   type: ClusterIP
   ports:
     - name: messaging-service
-      port: 8085
-      targetPort: 8085
+      port: {{ .Values.ports.messagingService }}
+      targetPort: {{ .Values.ports.messagingService }}
 ---

@@ -10,7 +10,7 @@ spec:
   selector:
     matchLabels:
       app: driver-service
-  replicas: 1
+  replicas: {{ .Values.replicaCount.driverService }}
   strategy:
     rollingUpdate:
       maxSurge: 25%
@@ -42,7 +42,7 @@ spec:
                   key: DATABASE_URL
       containers:
         - name: driver-service
-          image: ghcr.io/cs7ns2-traffic-service/traffic-service/driver-service:latest
+          image: {{ .Values.image.registry }}/driver-service:{{ .Values.image.tag }}
           resources:
             requests:
               cpu: 100m
@@ -51,12 +51,12 @@ spec:
               cpu: 100m
               memory: 100Mi
           ports:
-            - containerPort: 8081
+            - containerPort: {{ .Values.ports.driverService }}
               name: driver-service
           livenessProbe:
             httpGet:
               path: /health
-              port: 8081
+              port: {{ .Values.ports.driverService }}
             initialDelaySeconds: 5
             timeoutSeconds: 5
             successThreshold: 1

@@ -9,6 +9,6 @@ spec:
   type: ClusterIP
   ports:
     - name: routes-service
-      port: 8083
-      targetPort: 8083
+      port: {{ .Values.ports.routesService }}
+      targetPort: {{ .Values.ports.routesService }}
 ---
