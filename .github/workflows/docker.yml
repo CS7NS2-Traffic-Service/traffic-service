@@ -37,6 +37,8 @@ jobs:
           context: ./services/bff
           push: true
           tags: ghcr.io/cs7ns2-traffic-service/traffic-service/bff:latest
+          build-args: |
+            VITE_MAPBOX_TOKEN=${{ secrets.MAPBOX_TOKEN }}
 
       - name: Build and push driver-service
         uses: docker/build-push-action@v5
