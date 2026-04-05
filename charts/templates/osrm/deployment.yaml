@@ -25,7 +25,7 @@ spec:
       containers:
         - name: osrm
           image: {{ .Values.image.registry }}/osrm-ireland:{{ .Values.image.tag }}
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           resources:
             requests:
               cpu: 100m
