@@ -13,7 +13,7 @@ sdist/
 wheels/
 *.egg-link
 .installed.cfg
-lib/
+# lib/
 lib64/
 
 .venv/
