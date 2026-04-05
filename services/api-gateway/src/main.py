@@ -33,7 +33,7 @@ PUBLIC_PATHS = {
 
 
 def get_service_url(service: str) -> str | None:
-    return os.getenv(f'SERVICE_{service.upper()}')
+    return os.getenv(f'SERVICE_{service.upper().replace("-", "_")}')
 
 
 def is_public(method: str, path: str) -> bool:
