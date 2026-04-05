@@ -3,6 +3,12 @@ name: Build and Push Docker Images
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      build_all:
+        description: 'Build all services'
+        required: false
+        default: 'true'
 
 jobs:
   changes:
@@ -41,7 +47,7 @@ jobs:
 
   build-api-gateway:
     needs: changes
-    if: needs.changes.outputs.api-gateway == 'true'
+    if: needs.changes.outputs.api-gateway == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -63,7 +69,7 @@ jobs:
 
   build-bff:
     needs: changes
-    if: needs.changes.outputs.bff == 'true'
+    if: needs.changes.outputs.bff == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -88,7 +94,7 @@ jobs:
 
   build-driver-service:
     needs: changes
-    if: needs.changes.outputs.driver-service == 'true'
+    if: needs.changes.outputs.driver-service == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -110,7 +116,7 @@ jobs:
 
   build-booking-service:
     needs: changes
-    if: needs.changes.outputs.booking-service == 'true'
+    if: needs.changes.outputs.booking-service == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -132,7 +138,7 @@ jobs:
 
   build-routes-service:
     needs: changes
-    if: needs.changes.outputs.routes-service == 'true'
+    if: needs.changes.outputs.routes-service == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -154,7 +160,7 @@ jobs:
 
   build-conflict-detection:
     needs: changes
-    if: needs.changes.outputs.conflict-detection == 'true'
+    if: needs.changes.outputs.conflict-detection == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -176,7 +182,7 @@ jobs:
 
   build-messaging-service:
     needs: changes
-    if: needs.changes.outputs.messaging-service == 'true'
+    if: needs.changes.outputs.messaging-service == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -198,7 +204,7 @@ jobs:
 
   build-db-migrate:
     needs: changes
-    if: needs.changes.outputs.db-migrate == 'true'
+    if: needs.changes.outputs.db-migrate == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
