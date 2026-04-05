@@ -26,19 +26,14 @@ ALLOWED_TRANSITIONS: dict[BookingStatus, set[BookingStatus]] = {
 }
 
 
-def to_utc_naive(dt: datetime) -> datetime:
-    """
-    Normalize timestamps to naive UTC for DB consistency.
-
-    SQLAlchemy DateTime in this repo is configured without timezone information.
-    """
+def to_utc(dt: datetime) -> datetime:
     if dt.tzinfo is None:
-        return dt
-    return dt.astimezone(timezone.utc).replace(tzinfo=None)
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
-def utcnow_naive() -> datetime:
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 def parse_status(raw: str) -> BookingStatus:

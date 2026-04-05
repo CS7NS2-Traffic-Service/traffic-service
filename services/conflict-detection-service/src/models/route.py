@@ -17,4 +17,4 @@ class Route(BaseDBModel):
     segment_ids = mapped_column(ARRAY(UUID), nullable=True)
     geometry = mapped_column(JSONB, nullable=True)
     estimated_duration = mapped_column(Integer, nullable=True)
-    created_at = mapped_column(DateTime, server_default='now()')
+    created_at = mapped_column(DateTime(timezone=True), server_default='now()')

@@ -18,4 +18,4 @@ class Driver(BaseDBModel):
     license_number = mapped_column(Text, nullable=False)
     vehicle_type = mapped_column(Text, nullable=True)
     region = mapped_column(Text, nullable=False)
-    created_at = mapped_column(DateTime, server_default='now()')
+    created_at = mapped_column(DateTime(timezone=True), server_default='now()')

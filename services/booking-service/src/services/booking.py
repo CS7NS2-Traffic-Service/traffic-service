@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from domain import BookingStatus, parse_status, to_utc_naive, transition
+from domain import BookingStatus, parse_status, to_utc, transition
 from events import publish_event
 from models.booking import Booking
 from sqlalchemy.orm import Session
@@ -13,9 +13,9 @@ def create_booking(
     estimated_arrival,
     db: Session,
 ) -> Booking:
-    departure_time = to_utc_naive(departure_time)
+    departure_time = to_utc(departure_time)
     if estimated_arrival is not None:
-        estimated_arrival = to_utc_naive(estimated_arrival)
+        estimated_arrival = to_utc(estimated_arrival)
         if estimated_arrival < departure_time:
             raise ValueError('estimated_arrival must be >= departure_time')
 

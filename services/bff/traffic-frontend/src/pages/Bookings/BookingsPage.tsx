@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { formatUTCToLocal, formatUTCToLocalTime } from "@/lib/datetime"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useSearchParams } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
@@ -61,7 +62,7 @@ function BookingCard({ booking, onCancel, isCancelling, expanded, onToggle }: {
           <div className="space-y-1">
             <p className="text-sm font-medium">Route: {booking.route_id}</p>
             <p className="text-sm text-muted-foreground">
-              Departure: {new Date(booking.departure_time).toLocaleString()}
+              Departure: {formatUTCToLocal(booking.departure_time)}
             </p>
             <StatusBadge status={booking.status} />
           </div>
@@ -91,7 +92,7 @@ function BookingCard({ booking, onCancel, isCancelling, expanded, onToggle }: {
                   <div key={r.reservation_id} className="flex justify-between text-sm text-muted-foreground">
                     <span className="font-mono truncate max-w-48">{r.segment_id}</span>
                     <span>
-                      {new Date(r.time_window_start).toLocaleTimeString()} – {new Date(r.time_window_end).toLocaleTimeString()}
+                      {formatUTCToLocalTime(r.time_window_start)} – {formatUTCToLocalTime(r.time_window_end)}
                     </span>
                   </div>
                 ))}

@@ -2,7 +2,7 @@ import logging
 import time
 
 from database import SessionLocal
-from domain import BookingStatus, utcnow_naive
+from domain import BookingStatus, utcnow
 from events import publish_event
 from models.booking import Booking
 
@@ -17,7 +17,7 @@ def run_expiry_loop() -> None:
         try:
             db = SessionLocal()
             try:
-                now = utcnow_naive()
+                now = utcnow()
                 expired = (
                     db.query(Booking)
                     .filter(

@@ -16,4 +16,4 @@ class Message(BaseDBModel):
     booking_id = mapped_column(UUID(as_uuid=True), nullable=False)
     content = mapped_column(Text, nullable=False)
     is_read = mapped_column('read', Boolean, server_default='false')
-    created_at = mapped_column(DateTime, server_default='now()')
+    created_at = mapped_column(DateTime(timezone=True), server_default='now()')

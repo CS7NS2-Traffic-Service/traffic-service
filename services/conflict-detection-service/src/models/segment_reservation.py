@@ -18,5 +18,5 @@ class SegmentReservation(BaseDBModel):
         ForeignKey('road_segments.segment_id'),
         nullable=False,
     )
-    time_window_start = mapped_column(DateTime, nullable=False)
-    time_window_end = mapped_column(DateTime, nullable=False)
+    time_window_start = mapped_column(DateTime(timezone=True), nullable=False)
+    time_window_end = mapped_column(DateTime(timezone=True), nullable=False)
