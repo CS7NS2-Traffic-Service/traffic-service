@@ -45,7 +45,6 @@ def is_public(method: str, path: str) -> bool:
 
 
 async def check_rate_limit(driver_id: str) -> bool:
-    """Return True if allowed, False if rate limited."""
     try:
         key = f'rate_limit:{driver_id}'
         count = await redis_client.incr(key)

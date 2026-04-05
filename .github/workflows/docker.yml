@@ -59,6 +59,7 @@ jobs:
           context: ./services/api-gateway
           push: true
           tags: ghcr.io/cs7ns2-traffic-service/traffic-service/api-gateway:latest
+          platforms: linux/amd64,linux/arm64
 
   build-bff:
     needs: changes
@@ -80,6 +81,7 @@ jobs:
           context: ./services/bff
           push: true
           tags: ghcr.io/cs7ns2-traffic-service/traffic-service/bff:latest
+          platforms: linux/amd64,linux/arm64
           build-args: |
             VITE_MAPBOX_TOKEN=${{ secrets.MAPBOX_TOKEN }}
           no-cache: true
@@ -104,6 +106,7 @@ jobs:
           context: ./services/driver-service
           push: true
           tags: ghcr.io/cs7ns2-traffic-service/traffic-service/driver-service:latest
+          platforms: linux/amd64,linux/arm64
 
   build-booking-service:
     needs: changes
@@ -125,6 +128,7 @@ jobs:
           context: ./services/booking-service
           push: true
           tags: ghcr.io/cs7ns2-traffic-service/traffic-service/booking-service:latest
+          platforms: linux/amd64,linux/arm64
 
   build-routes-service:
     needs: changes
@@ -146,6 +150,7 @@ jobs:
           context: ./services/routes-service
           push: true
           tags: ghcr.io/cs7ns2-traffic-service/traffic-service/routes-service:latest
+          platforms: linux/amd64,linux/arm64
 
   build-conflict-detection:
     needs: changes
@@ -167,6 +172,7 @@ jobs:
           context: ./services/conflict-detection-service
           push: true
           tags: ghcr.io/cs7ns2-traffic-service/traffic-service/conflict-detection:latest
+          platforms: linux/amd64,linux/arm64
 
   build-messaging-service:
     needs: changes
@@ -188,6 +194,7 @@ jobs:
           context: ./services/messaging-service
           push: true
           tags: ghcr.io/cs7ns2-traffic-service/traffic-service/messaging-service:latest
+          platforms: linux/amd64,linux/arm64
 
   build-db-migrate:
     needs: changes
@@ -209,4 +216,5 @@ jobs:
           context: ./db
           push: true
           tags: ghcr.io/cs7ns2-traffic-service/traffic-service/db-migrate:latest
+          platforms: linux/amd64,linux/arm64
 
