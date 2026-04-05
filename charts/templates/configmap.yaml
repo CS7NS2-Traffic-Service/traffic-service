@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: traffic-config
+  namespace: default
+data:
+  REDIS_URL: redis://redis:6379
+  DATABASE_URL: postgresql://traffic:traffic@postgres:5432/traffic
+  JWT_SECRET_KEY: super-secret-key
+  BFF_URL: http://bff:8080
+  SERVICE_DRIVER: http://driver-service:8081
+  SERVICE_BOOKING: http://booking-service:8082
+  SERVICE_ROUTES: http://routes-service:8083
+  SERVICE_MESSAGING: http://messaging-service:8085
+---

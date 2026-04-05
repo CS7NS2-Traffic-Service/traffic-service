@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: routes-service
+  namespace: default
+spec:
+  selector:
+    app: routes-service
+  type: ClusterIP
+  ports:
+    - name: routes-service
+      port: {{ .Values.ports.routesService }}
+      targetPort: {{ .Values.ports.routesService }}
+---

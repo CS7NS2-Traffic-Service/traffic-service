@@ -1,5 +1,5 @@
 interface ImportMetaEnv {
-  readonly MAPBOX_TOKEN: string
+  readonly VITE_MAPBOX_TOKEN: string
 }
 
 interface ImportMeta {

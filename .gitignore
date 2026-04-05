@@ -70,3 +70,7 @@ osrm-data/*.pbf
 
 # Node
 node_modules/
+
+# Playwright
+e2e-tests/test-results/
+e2e-tests/playwright-report/

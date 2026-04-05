@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: conflict-detection-service
+  namespace: default
+spec:
+  selector:
+    app: conflict-detect
+  type: ClusterIP
+  ports:
+    - name: conflict-detection-service
+      port: {{ .Values.ports.conflictDetection }}
+      targetPort: {{ .Values.ports.conflictDetection }}
+---

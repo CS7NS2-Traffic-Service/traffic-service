@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: redisinsight
+  namespace: default
+spec:
+  selector:
+    app: redisinsight
+  type: ClusterIP
+  ports:
+    - name: redisinsight
+      port: 5540
+      targetPort: 5540
+---

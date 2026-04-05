@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migrate
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:16
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h postgres -U traffic; do
+                echo "waiting for postgres..."
+                sleep 2
+              done
+      containers:
+        - name: db-migrate
+          image: {{ .Values.image.registry }}/db-migrate:{{ .Values.image.tag }}
+          command: ["alembic", "upgrade", "head"]
+          env:
+            - name: DATABASE_URL
+              value: postgresql://traffic:traffic@postgres:5432/traffic
+      restartPolicy: Never
+  backoffLimit: 4

@@ -1,0 +1,70 @@
+# https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: driver-service
+  namespace: default
+  labels:
+    app: driver-service
+spec:
+  selector:
+    matchLabels:
+      app: driver-service
+  replicas: {{ .Values.replicaCount.driverService }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: driver-service
+      labels:
+        app: driver-service
+    spec:
+      initContainers:
+        - name: wait-for-migrations
+          image: postgres:16
+          command:
+            - sh
+            - -c
+            - |
+              until psql $DATABASE_URL -c "SELECT 1 FROM drivers LIMIT 1" > /dev/null 2>&1; do
+                echo "waiting for migrations..."
+                sleep 2
+              done
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: traffic-config
+                  key: DATABASE_URL
+      containers:
+        - name: driver-service
+          image: {{ .Values.image.registry }}/driver-service:{{ .Values.image.tag }}
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 100m
+              memory: 100Mi
+          ports:
+            - containerPort: {{ .Values.ports.driverService }}
+              name: driver-service
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.ports.driverService }}
+            initialDelaySeconds: 5
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+            periodSeconds: 10
+          env:
+            - name: DATABASE_URL
+              value: postgresql://traffic:traffic@postgres:5432/traffic
+            - name: JWT_SECRET_KEY
+              value: super-secret-key
+---
