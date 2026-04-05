@@ -12,4 +12,5 @@ data:
   SERVICE_BOOKING: http://booking-service:8082
   SERVICE_ROUTES: http://routes-service:8083
   SERVICE_MESSAGING: http://messaging-service:8085
+  SERVICE_CONFLICT_DETECTION: http://conflict-detection-service:8084
 ---
