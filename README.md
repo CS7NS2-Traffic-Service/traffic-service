@@ -233,17 +233,21 @@ pre-push or in CI.
 
 ## Kubernetes Deployment
 
-The application can be deployed to a Kubernetes cluster using a Helm chart located in `charts/`.
+The application is deployed to Kubernetes using a Helm chart located in `charts/`. Images are built
+and pushed to GitHub Container Registry (ghcr.io) automatically via GitHub Actions on every push to
+`main` — only services whose source files changed are rebuilt.
 
 ### Architecture
 
 All services run as Kubernetes Deployments with ClusterIP Services for internal communication. The
 API Gateway is the only service exposed externally via NodePort on port `30080`. Shared configuration
-(database URL, Redis URL, JWT secret) is managed through a single ConfigMap (`traffic-config`).
+is managed through a single ConfigMap (`traffic-config`).
 
 ```
 charts/
 ├── Chart.yaml
+├── values.yaml                           # Default values (image registry, replicas, ports)
+├── values-demo.yaml                      # Demo overrides (2 replicas per service)
 └── templates/
     ├── configmap.yaml                    # Shared env vars for all services
     ├── api-gateway/                      # NodePort :30080 (external entry point)
@@ -256,7 +260,7 @@ charts/
     ├── postgres/                         # ClusterIP :5432 + PersistentVolumeClaim
     ├── redis/                            # ClusterIP :6379
     ├── osrm/                             # ClusterIP :5000
-    ├── migrations/                       # Job (runs Alembic migrations)
+    ├── migrations/                       # Job (runs Alembic migrations once on deploy)
     └── admin/
         ├── pgadmin/                      # ClusterIP :80
         └── redisinsight/                 # ClusterIP :5540
@@ -275,38 +279,25 @@ Each application service includes:
 minikube start
 ```
 
-2. Point your Docker CLI at minikube's Docker daemon:
+2. Authenticate with GitHub Container Registry:
 
 ```bash
-eval $(minikube docker-env)
+echo "<your-github-token>" | docker login ghcr.io -u <your-github-username> --password-stdin
 ```
 
-All `docker build` commands in the steps below must run in a shell where this eval has been executed,
-otherwise the images will be built into your local daemon and minikube won't be able to find them.
-
-### Build images
-
-Build all service images into minikube's Docker daemon:
-
-```bash
-docker build -t api-gateway:latest services/api-gateway/
-docker build -t bff:latest --build-arg VITE_MAPBOX_TOKEN=$MAPBOX_TOKEN services/bff/
-docker build -t driver-service:latest services/driver-service/
-docker build -t booking-service:latest services/booking-service/
-docker build -t routes-service:latest services/routes-service/
-docker build -t conflict-detection-service:latest services/conflict-detection-service/
-docker build -t messaging-service:latest services/messaging-service/
-docker build -t db-migrate:latest db/
-docker build -t osrm-ireland:latest osrm-data/
-```
-
-All images use `imagePullPolicy: Never` so Kubernetes uses the locally built images instead of
-trying to pull from a registry.
+The token needs `read:packages` permission. Create one at GitHub → Settings → Developer settings →
+Personal access tokens.
 
 ### Deploy
 
 ```bash
 helm install traffic-service ./charts
+```
+
+For the demo (2 replicas per service):
+
+```bash
+helm install traffic-service ./charts -f charts/values-demo.yaml
 ```
 
 Watch pods come up:
@@ -315,10 +306,19 @@ Watch pods come up:
 kubectl get pods -w
 ```
 
-The startup order is handled by init containers:
+The startup order is handled automatically by init containers:
 1. Postgres starts first
 2. The `db-migrate` Job waits for Postgres, then runs Alembic migrations
 3. All application services wait for migrations to complete, then start
+
+### Validate before deploying
+
+Render templates locally without applying to the cluster:
+
+```bash
+helm template traffic-service ./charts
+helm lint ./charts
+```
 
 ### Access the application
 
@@ -328,7 +328,12 @@ On macOS the minikube IP is not directly reachable from the host. Use the built-
 minikube service api-gateway
 ```
 
-This opens the API Gateway in your browser automatically.
+To expose to the local network (other machines on the same Wi-Fi):
+
+```bash
+kubectl port-forward --address 0.0.0.0 service/api-gateway 8000:8000
+# accessible at http://<your-mac-ip>:8000
+```
 
 ### Access admin tools
 
@@ -344,16 +349,14 @@ kubectl port-forward deployment/redisinsight 5540:5540
 
 ### Updating after code changes
 
-After modifying a service, rebuild its image and restart the deployment:
+Push to `main` — GitHub Actions rebuilds only the services whose files changed and pushes updated
+images to ghcr.io. Then restart the affected deployments:
 
 ```bash
-eval $(minikube docker-env)
-docker build -t <service-name>:latest services/<service-name>/
 kubectl rollout restart deployment/<service-name>
+# or restart everything at once:
+kubectl rollout restart deployment
 ```
-
-Since all images use the `latest` tag, Kubernetes won't detect a change automatically.
-`rollout restart` forces the pods to recreate with the new image.
 
 ### Tear down
 
