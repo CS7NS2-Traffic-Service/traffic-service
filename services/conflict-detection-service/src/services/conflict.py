@@ -72,13 +72,11 @@ def create_reservations(
 
 
 def delete_reservations(booking_id: str, db: Session) -> int:
-    count = (
+    return (
         db.query(SegmentReservation)
         .filter(SegmentReservation.booking_id == booking_id)
         .delete()
     )
-    db.commit()
-    return count
 
 
 def get_segment_utilization(
@@ -160,8 +158,6 @@ def assess_and_reserve(
                 time_window_end=end_time,
             )
         )
-    db.commit()
-
     return AssessRouteResponse(
         booking_id=booking_id,
         route_id=route_id,
