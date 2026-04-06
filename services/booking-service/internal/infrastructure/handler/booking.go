@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -22,7 +23,7 @@ func NewBookingHandler(service *application.BookingService) *BookingHandler {
 }
 
 func (h *BookingHandler) CancelBooking(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	ctx := domain.ContextWithCorrelationID(r.Context(), r.Header.Get("X-Correlation-ID"))
 
 	bookingID, err := uuid.Parse(chi.URLParam(r, "booking_id"))
 	if err != nil {
@@ -59,7 +60,7 @@ func (h *BookingHandler) CancelBooking(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BookingHandler) GetBooking(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	ctx := domain.ContextWithCorrelationID(r.Context(), r.Header.Get("X-Correlation-ID"))
 
 	bookingID, err := uuid.Parse(chi.URLParam(r, "booking_id"))
 
@@ -68,7 +69,13 @@ func (h *BookingHandler) GetBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	booking, err := h.service.GetByID(ctx, bookingID)
+	driverID, err := uuid.Parse(r.Header.Get("X-Driver-ID"))
+	if err != nil {
+		http.Error(w, "driverID is not a valid UUID", http.StatusBadRequest)
+		return
+	}
+
+	booking, err := h.service.GetByID(ctx, bookingID, driverID)
 
 	if err != nil {
 		http.Error(w, "encountered error while fetching booking", http.StatusInternalServerError)
@@ -87,7 +94,7 @@ func (h *BookingHandler) GetBooking(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BookingHandler) CreateBooking(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	ctx := domain.ContextWithCorrelationID(r.Context(), r.Header.Get("X-Correlation-ID"))
 
 	driverID, err := uuid.Parse(r.Header.Get("X-Driver-ID"))
 	if err != nil {
@@ -100,15 +107,25 @@ func (h *BookingHandler) CreateBooking(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
+	if req.DepartureTime.Before(time.Now().UTC()) {
+		http.Error(w, "departure_time must be in the future", http.StatusBadRequest)
+		return
+	}
 
 	booking := &domain.Booking{
 		DriverID:         driverID,
 		RouteID:          req.RouteID,
-		DepartureTime:    req.DepartureTime,
+		DepartureTime:    req.DepartureTime.UTC(),
 		EstimatedArrival: req.EstimatedArrival,
 		Status:           domain.StatusPending,
 		ExpiresAt:        &req.DepartureTime,
 	}
+	if booking.EstimatedArrival != nil {
+		estimatedArrivalUTC := booking.EstimatedArrival.UTC()
+		booking.EstimatedArrival = &estimatedArrivalUTC
+	}
+	expiresAtUTC := booking.ExpiresAt.UTC()
+	booking.ExpiresAt = &expiresAtUTC
 
 	created, err := h.service.CreateBooking(ctx, booking)
 	if err != nil {
@@ -122,7 +139,7 @@ func (h *BookingHandler) CreateBooking(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BookingHandler) ListBookings(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	ctx := domain.ContextWithCorrelationID(r.Context(), r.Header.Get("X-Correlation-ID"))
 
 	driverIDHeader := r.Header.Get("X-Driver-ID")
 	driverID, err := uuid.Parse(driverIDHeader)

@@ -1,6 +1,8 @@
 import json
 import logging
 import os
+from datetime import UTC, datetime
+from uuid import uuid4
 
 import redis
 
@@ -12,6 +14,22 @@ redis_client = redis.Redis.from_url(
 )
 
 
-def publish_event(stream: str, data: dict) -> None:
-    redis_client.xadd(stream, {'data': json.dumps(data)})
-    logger.info('Published to %s: %s', stream, data)
+def publish_event(
+    stream: str,
+    data: dict,
+    correlation_id: str | None = None,
+) -> None:
+    envelope = {
+        'event_id': str(uuid4()),
+        'correlation_id': correlation_id or str(uuid4()),
+        'event_type': stream,
+        'created_at': datetime.now(UTC).isoformat(),
+        'data': data,
+    }
+    redis_client.xadd(stream, {'data': json.dumps(envelope)})
+    logger.info(
+        'Published to %s event_id=%s correlation=%s',
+        stream,
+        envelope['event_id'],
+        envelope['correlation_id'],
+    )

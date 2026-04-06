@@ -2,10 +2,15 @@ import json
 import logging
 import os
 import time
+from datetime import UTC, datetime
+from threading import Event
+from uuid import uuid4
 
 import redis
 from database import SessionLocal
+from models.processed_event import ProcessedEvent
 from services.message import create_message
+from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +21,8 @@ redis_client = redis.Redis.from_url(
 
 STREAM = 'booking.updated'
 GROUP = 'messaging-service'
-CONSUMER = 'messaging-consumer-1'
+CONSUMER = f"messaging-consumer-{os.environ.get('HOSTNAME', str(uuid4()))}"
+MAX_ATTEMPTS = 3
 
 STATUS_MESSAGES = {
     'APPROVED': ('Your booking has been approved. Have a safe journey!'),
@@ -36,6 +42,65 @@ def ensure_consumer_group() -> None:
     except redis.exceptions.ResponseError as e:
         if 'BUSYGROUP' not in str(e):
             raise
+
+
+def mark_processed(event_id: str) -> bool:
+    db = SessionLocal()
+    try:
+        db.add(
+            ProcessedEvent(
+                event_id=event_id,
+                consumer_name=CONSUMER,
+                stream_name=STREAM,
+            )
+        )
+        db.commit()
+        return True
+    except IntegrityError:
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
+
+def is_processed(event_id: str) -> bool:
+    db = SessionLocal()
+    try:
+        found = (
+            db.query(ProcessedEvent)
+            .filter(
+                ProcessedEvent.event_id == event_id,
+                ProcessedEvent.consumer_name == CONSUMER,
+            )
+            .first()
+        )
+        return found is not None
+    finally:
+        db.close()
+
+
+def parse_envelope(fields: dict, msg_id: str) -> dict:
+    raw = json.loads(fields['data'])
+    if isinstance(raw, dict) and raw.get('event_id') and 'data' in raw:
+        return raw
+    return {
+        'event_id': f'{STREAM}:{msg_id}',
+        'correlation_id': str(uuid4()),
+        'event_type': STREAM,
+        'created_at': datetime.now(UTC).isoformat(),
+        'data': raw,
+    }
+
+
+def publish_to_dlq(msg_id: str, fields: dict, error: Exception) -> None:
+    payload = {
+        'stream': STREAM,
+        'message_id': msg_id,
+        'fields': fields,
+        'error': str(error),
+        'failed_at': datetime.now(UTC).isoformat(),
+    }
+    redis_client.xadd(f'{STREAM}.dlq', {'data': json.dumps(payload)})
 
 
 def handle_booking_updated(data: dict) -> None:
@@ -65,10 +130,10 @@ def handle_booking_updated(data: dict) -> None:
         db.close()
 
 
-def run_consumer() -> None:
+def run_consumer(stop_event: Event | None = None) -> None:
     ensure_consumer_group()
     logger.info('Messaging consumer started on %s', STREAM)
-    while True:
+    while not (stop_event and stop_event.is_set()):
         try:
             messages = redis_client.xreadgroup(
                 GROUP,
@@ -79,8 +144,32 @@ def run_consumer() -> None:
             )
             for _, entries in messages:
                 for msg_id, fields in entries:
-                    data = json.loads(fields['data'])
-                    handle_booking_updated(data)
+                    envelope = parse_envelope(fields, msg_id)
+                    if is_processed(envelope['event_id']):
+                        redis_client.xack(STREAM, GROUP, msg_id)
+                        continue
+
+                    last_error = None
+                    for attempt in range(1, MAX_ATTEMPTS + 1):
+                        try:
+                            handle_booking_updated(envelope['data'])
+                            last_error = None
+                            break
+                        except Exception as exc:
+                            last_error = exc
+                            time.sleep(0.2 * (attempt**2))
+
+                    if last_error is not None:
+                        publish_to_dlq(msg_id, fields, last_error)
+                        redis_client.xack(STREAM, GROUP, msg_id)
+                        continue
+
+                    if not mark_processed(envelope['event_id']):
+                        logger.info(
+                            'Event %s already marked processed for %s',
+                            envelope['event_id'],
+                            CONSUMER,
+                        )
                     redis_client.xack(STREAM, GROUP, msg_id)
         except Exception:
             logger.exception('Consumer error')

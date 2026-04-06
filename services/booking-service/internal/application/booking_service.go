@@ -60,10 +60,17 @@ func (s *BookingService) HandleRouteAssessed(ctx context.Context, event domain.R
 func (s *BookingService) StartExpiryLoop(ctx context.Context) {
 	log.Println("booking expiry loop started (every 30s)")
 	for {
+		if ctx.Err() != nil {
+			return
+		}
 		if err := s.ExpireBookings(ctx); err != nil {
 			log.Printf("expiry loop error: %v", err)
 		}
-		time.Sleep(30 * time.Second)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(30 * time.Second):
+		}
 	}
 }
 
@@ -121,12 +128,12 @@ func (s *BookingService) GetAll(ctx context.Context, driverID uuid.UUID) ([]*dom
 	return s.repository.GetAll(ctx, driverID)
 }
 
-func (s *BookingService) GetByID(ctx context.Context, driverID uuid.UUID) (*domain.Booking, error) {
-	return s.repository.GetByID(ctx, driverID)
+func (s *BookingService) GetByID(ctx context.Context, bookingID uuid.UUID, driverID uuid.UUID) (*domain.Booking, error) {
+	return s.repository.GetByID(ctx, bookingID, driverID)
 }
 
 func (s *BookingService) CancelBooking(ctx context.Context, bookingID uuid.UUID, driverID uuid.UUID) (*domain.Booking, error) {
-	booking, err := s.repository.GetByID(ctx, bookingID)
+	booking, err := s.repository.GetByID(ctx, bookingID, driverID)
 
 	if err != nil {
 		return nil, err
