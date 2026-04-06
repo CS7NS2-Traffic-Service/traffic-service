@@ -22,6 +22,10 @@ spec:
       labels:
         app: messaging
     spec:
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+        - name: {{ .Values.imagePullSecret }}
+      {{- end }}
       initContainers:
         - name: wait-for-migrations
           image: postgres:16

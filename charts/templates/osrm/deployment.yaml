@@ -22,6 +22,10 @@ spec:
       labels:
         app: osrm
     spec:
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+        - name: {{ .Values.imagePullSecret }}
+      {{- end }}
       containers:
         - name: osrm
           image: {{ .Values.image.registry }}/osrm-ireland:{{ .Values.image.tag }}

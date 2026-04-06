@@ -9,7 +9,7 @@ spec:
   selector:
     matchLabels:
       app: pgadmin
-  replicas: 1
+  replicas: {{ .Values.replicaCount.pgadmin }}
   strategy:
     rollingUpdate:
       maxSurge: 25%
