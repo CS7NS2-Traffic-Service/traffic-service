@@ -40,21 +40,8 @@ services:
       db-migrate:
         condition: service_completed_successfully
 
-  # booking-service:
-  #   build: services/booking-service
-  #   expose:
-  #     - "8082"
-  #   environment:
-  #     DATABASE_URL: postgresql://traffic:traffic@postgres:5432/traffic
-  #     REDIS_URL: redis://redis:6379
-  #   depends_on:
-  #     db-migrate:
-  #       condition: service_completed_successfully
-  #     redis:
-  #       condition: service_healthy
-
   booking-service:
-    build: services/booking-service-go
+    build: services/booking-service
     expose:
       - "8082"
     environment:
