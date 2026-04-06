@@ -9,6 +9,6 @@ spec:
   type: ClusterIP
   ports:
     - name: osrm
-      port: 5000
-      targetPort: 5000
+      port: 5555
+      targetPort: 5555
 ---

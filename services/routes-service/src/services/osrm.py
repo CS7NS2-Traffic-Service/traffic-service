@@ -3,7 +3,7 @@ import os
 import httpx
 from fastapi import HTTPException
 
-OSRM_URL = os.environ.get('OSRM_URL', 'http://osrm:5000')
+OSRM_URL = os.environ.get('OSRM_URL', 'http://osrm:5555')
 
 
 def query_route(

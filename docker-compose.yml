@@ -59,7 +59,7 @@ services:
       - "8083"
     environment:
       DATABASE_URL: postgresql://traffic:traffic@postgres:5432/traffic
-      OSRM_URL: http://osrm:5000
+      OSRM_URL: http://osrm:5555
     depends_on:
       db-migrate:
         condition: service_completed_successfully
@@ -118,11 +118,11 @@ services:
 
   osrm:
     image: osrm/osrm-backend
-    ports:
-      - "5000:5000"
+    expose:
+      - "5555"
     volumes:
       - ./osrm-data:/data
-    command: osrm-routed --algorithm mld /data/ireland-and-northern-ireland-latest.osrm
+    command: osrm-routed --algorithm mld --port 5555 /data/ireland-and-northern-ireland-latest.osrm
     healthcheck:
       test:
         [
@@ -130,7 +130,7 @@ services:
           "perl",
           "-MIO::Socket::INET",
           "-e",
-          "exit(IO::Socket::INET->new('localhost:5000') ? 0 : 1)",
+          "exit(IO::Socket::INET->new('localhost:5555') ? 0 : 1)",
         ]
       interval: 5s
       timeout: 5s
@@ -158,7 +158,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: admin@admin.com
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
-      - "5050:80"
+      - "5555:80"
     depends_on:
       - postgres
 

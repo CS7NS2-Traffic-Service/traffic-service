@@ -34,11 +34,11 @@ spec:
               cpu: 1000m
               memory: 1Gi
           ports:
-            - containerPort: 5000
+            - containerPort: 5555
               name: osrm
           livenessProbe:
             tcpSocket:
-              port: 5000
+              port: 5555
             initialDelaySeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
