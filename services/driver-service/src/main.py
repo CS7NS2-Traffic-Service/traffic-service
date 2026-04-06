@@ -1,9 +1,12 @@
 from contextlib import asynccontextmanager
+import os
 
 from dependencies import get_db_connection
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from routes import auth, drivers
 from services.auth import register
+from sqlalchemy import text
 
 
 def seed_test_driver():
@@ -21,7 +24,11 @@ def seed_test_driver():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    seed_test_driver()
+    if (
+        os.environ.get('APP_ENV', 'development') == 'development'
+        and os.environ.get('SEED_TEST_USER', 'true').lower() == 'true'
+    ):
+        seed_test_driver()
     yield
 
 
@@ -31,6 +38,28 @@ app = FastAPI(lifespan=lifespan)
 @app.get('/health')
 async def health():
     return {'status': 'ok'}
+
+
+@app.get('/health/live')
+async def health_live():
+    return {'status': 'live'}
+
+
+@app.get('/health/ready')
+async def health_ready():
+    db = None
+    try:
+        db = next(get_db_connection())
+        db.execute(text('SELECT 1'))
+    except Exception:
+        return JSONResponse(
+            status_code=503,
+            content={'status': 'not_ready', 'dependency': 'postgres'},
+        )
+    finally:
+        if db is not None:
+            db.close()
+    return {'status': 'ready'}
 
 
 app.include_router(auth.router, prefix='/api/driver/auth', tags=['auth'])

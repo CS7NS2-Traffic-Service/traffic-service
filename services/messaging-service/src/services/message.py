@@ -40,6 +40,5 @@ def create_message(
         content=content,
     )
     db.add(new_message)
-    db.commit()
-    db.refresh(new_message)
+    db.flush()
     return new_message

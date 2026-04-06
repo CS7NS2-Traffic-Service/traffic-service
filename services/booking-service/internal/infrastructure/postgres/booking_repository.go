@@ -85,14 +85,14 @@ func (r *BookingRepository) GetAll(ctx context.Context, driverID uuid.UUID) ([]*
 	return bookings, rows.Err()
 }
 
-func (r *BookingRepository) GetByID(ctx context.Context, bookingID uuid.UUID) (*domain.Booking, error) {
+func (r *BookingRepository) GetByID(ctx context.Context, bookingID uuid.UUID, driverID uuid.UUID) (*domain.Booking, error) {
 	sql := `
       SELECT booking_id, driver_id, route_id, departure_time,
    estimated_arrival, status, created_at, expires_at
       FROM bookings
-      WHERE booking_id = $1
+      WHERE booking_id = $1 AND driver_id = $2
   `
-	row := r.pool.QueryRow(ctx, sql, bookingID)
+	row := r.pool.QueryRow(ctx, sql, bookingID, driverID)
 
 	var booking domain.Booking
 
@@ -210,4 +210,44 @@ func (r *BookingRepository) FindExpired(ctx context.Context) ([]*domain.Booking,
 	}
 
 	return bookings, rows.Err()
+}
+
+func (r *BookingRepository) IsEventProcessed(
+	ctx context.Context,
+	eventID string,
+	consumer string,
+) (bool, error) {
+	sql := `
+		SELECT 1
+		FROM processed_events
+		WHERE event_id = $1 AND consumer_name = $2
+		LIMIT 1
+	`
+	var marker int
+	err := r.pool.QueryRow(ctx, sql, eventID, consumer).Scan(&marker)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (r *BookingRepository) MarkEventProcessed(
+	ctx context.Context,
+	eventID string,
+	consumer string,
+	stream string,
+) (bool, error) {
+	sql := `
+		INSERT INTO processed_events (event_id, consumer_name, stream_name)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (event_id, consumer_name) DO NOTHING
+	`
+	result, err := r.pool.Exec(ctx, sql, eventID, consumer, stream)
+	if err != nil {
+		return false, err
+	}
+	return result.RowsAffected() == 1, nil
 }

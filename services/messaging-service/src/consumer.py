@@ -2,10 +2,15 @@ import json
 import logging
 import os
 import time
+from datetime import UTC, datetime
+from threading import Event
+from uuid import uuid4
 
 import redis
 from database import SessionLocal
+from models.processed_event import ProcessedEvent
 from services.message import create_message
+from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +21,8 @@ redis_client = redis.Redis.from_url(
 
 STREAM = 'booking.updated'
 GROUP = 'messaging-service'
-CONSUMER = 'messaging-consumer-1'
+CONSUMER = f'messaging-consumer-{os.environ.get("HOSTNAME", str(uuid4()))}'
+MAX_ATTEMPTS = 3
 
 STATUS_MESSAGES = {
     'APPROVED': ('Your booking has been approved. Have a safe journey!'),
@@ -38,7 +44,35 @@ def ensure_consumer_group() -> None:
             raise
 
 
-def handle_booking_updated(data: dict) -> None:
+def parse_envelope(fields: dict, msg_id: str) -> dict:
+    raw = json.loads(fields['data'])
+    if isinstance(raw, dict) and raw.get('event_id') and 'data' in raw:
+        return raw
+    return {
+        'event_id': f'{STREAM}:{msg_id}',
+        'correlation_id': str(uuid4()),
+        'event_type': STREAM,
+        'created_at': datetime.now(UTC).isoformat(),
+        'data': raw,
+    }
+
+
+def publish_to_dlq(msg_id: str, fields: dict, error: Exception) -> None:
+    payload = {
+        'stream': STREAM,
+        'message_id': msg_id,
+        'fields': fields,
+        'error': str(error),
+        'failed_at': datetime.now(UTC).isoformat(),
+    }
+    redis_client.xadd(f'{STREAM}.dlq', {'data': json.dumps(payload)})
+
+
+def handle_booking_updated(
+    db,
+    data: dict,
+    event_id: str,
+) -> None:
     driver_id = data['driver_id']
     booking_id = data['booking_id']
     status = data['status']
@@ -48,27 +82,50 @@ def handle_booking_updated(data: dict) -> None:
         f'Your booking status has been updated to {status}.',
     )
 
-    db = SessionLocal()
-    try:
-        create_message(
-            driver_id=driver_id,
-            booking_id=booking_id,
-            content=content,
-            db=db,
+    create_message(
+        driver_id=driver_id,
+        booking_id=booking_id,
+        content=content,
+        db=db,
+    )
+    db.add(
+        ProcessedEvent(
+            event_id=event_id,
+            consumer_name=CONSUMER,
+            stream_name=STREAM,
         )
-        logger.info(
-            'Created message for driver %s: %s',
-            driver_id,
-            status,
-        )
-    finally:
-        db.close()
+    )
+    db.commit()
+    logger.info(
+        'Created message for driver %s: %s',
+        driver_id,
+        status,
+    )
 
 
-def run_consumer() -> None:
+def process_with_retry(handler, **kwargs):
+    last_err = None
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        db = SessionLocal()
+        try:
+            handler(db=db, **kwargs)
+            return
+        except IntegrityError:
+            db.rollback()
+            return
+        except Exception as exc:
+            db.rollback()
+            last_err = exc
+            time.sleep(0.2 * (attempt**2))
+        finally:
+            db.close()
+    raise last_err
+
+
+def run_consumer(stop_event: Event | None = None) -> None:
     ensure_consumer_group()
     logger.info('Messaging consumer started on %s', STREAM)
-    while True:
+    while not (stop_event and stop_event.is_set()):
         try:
             messages = redis_client.xreadgroup(
                 GROUP,
@@ -79,8 +136,19 @@ def run_consumer() -> None:
             )
             for _, entries in messages:
                 for msg_id, fields in entries:
-                    data = json.loads(fields['data'])
-                    handle_booking_updated(data)
+                    envelope = parse_envelope(fields, msg_id)
+
+                    try:
+                        process_with_retry(
+                            handle_booking_updated,
+                            data=envelope['data'],
+                            event_id=envelope['event_id'],
+                        )
+                    except Exception as exc:
+                        publish_to_dlq(msg_id, fields, exc)
+                        redis_client.xack(STREAM, GROUP, msg_id)
+                        continue
+
                     redis_client.xack(STREAM, GROUP, msg_id)
         except Exception:
             logger.exception('Consumer error')
