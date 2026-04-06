@@ -12,7 +12,7 @@ spec:
             - sh
             - -c
             - |
-              until pg_isready -h postgres -U traffic; do
+              until pg_isready -h postgres-rw -U traffic; do
                 echo "waiting for postgres..."
                 sleep 2
               done
@@ -22,6 +22,6 @@ spec:
           command: ["alembic", "upgrade", "head"]
           env:
             - name: DATABASE_URL
-              value: postgresql://traffic:traffic@postgres:5432/traffic
+              value: postgresql://traffic:traffic@postgres-rw:5432/traffic
       restartPolicy: Never
   backoffLimit: 4

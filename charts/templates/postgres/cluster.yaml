@@ -1,0 +1,22 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres
+  namespace: default
+spec:
+  instances: {{ .Values.postgres.instances | default 1 }}
+  imageName: ghcr.io/cloudnative-pg/postgresql:16
+
+  postgresql:
+    pg_hba:
+      - host all all 0.0.0.0/0 md5
+
+  bootstrap:
+    initdb:
+      database: traffic
+      owner: traffic
+      secret:
+        name: postgres-credentials
+
+  storage:
+    size: {{ .Values.postgres.storageSize | default "1Gi" }}

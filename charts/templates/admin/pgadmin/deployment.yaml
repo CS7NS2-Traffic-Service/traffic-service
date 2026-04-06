@@ -29,7 +29,7 @@ spec:
             - sh
             - -c
             - |
-              until pg_isready -h postgres -U traffic; do
+              until pg_isready -h postgres-rw -U traffic; do
                 echo "waiting for postgres..."
                 sleep 2
               done

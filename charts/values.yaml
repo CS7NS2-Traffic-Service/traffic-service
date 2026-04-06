@@ -11,6 +11,10 @@ replicaCount:
   conflictDetection: 1
   messagingService: 1
 
+postgres:
+  instances: 1
+  storageSize: 1Gi
+
 ports:
   apiGateway: 8000
   bff: 8080

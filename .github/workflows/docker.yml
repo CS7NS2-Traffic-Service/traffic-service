@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       build_all:
-        description: 'Build all services'
+        description: "Build all services"
         required: false
-        default: 'true'
+        default: "true"
 
 jobs:
   changes:
@@ -35,7 +35,7 @@ jobs:
             driver-service:
               - 'services/driver-service/**'
             booking-service:
-              - 'services/booking-service-go/**'
+              - 'services/booking-service/**'
             routes-service:
               - 'services/routes-service/**'
             conflict-detection:
@@ -223,4 +223,3 @@ jobs:
           push: true
           tags: ghcr.io/cs7ns2-traffic-service/traffic-service/db-migrate:latest
           platforms: linux/amd64,linux/arm64
-
