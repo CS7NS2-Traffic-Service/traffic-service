@@ -35,7 +35,7 @@ jobs:
             driver-service:
               - 'services/driver-service/**'
             booking-service:
-              - 'services/booking-service/**'
+              - 'services/booking-service-go/**'
             routes-service:
               - 'services/routes-service/**'
             conflict-detection:
@@ -131,7 +131,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v5
         with:
-          context: ./services/booking-service
+          context: ./services/booking-service-go
           push: true
           tags: ghcr.io/cs7ns2-traffic-service/traffic-service/booking-service:latest
           platforms: linux/amd64,linux/arm64
