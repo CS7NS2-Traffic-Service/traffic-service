@@ -68,6 +68,7 @@ export function DateTimePicker({ value, onChange, className, "aria-label": ariaL
   return (
     <Popover>
       <PopoverTrigger
+        data-testid="departure-picker"
         aria-label={ariaLabel}
         className={cn(
           "flex h-9 w-full items-center justify-start gap-2 rounded-lg border border-input bg-transparent px-3 text-sm font-normal shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -87,7 +88,7 @@ export function DateTimePicker({ value, onChange, className, "aria-label": ariaL
         />
         <div className="flex items-center gap-2 border-t p-3">
           <Select value={String(value.getHours())} onValueChange={handleHourChange}>
-            <SelectTrigger className="flex-1">
+            <SelectTrigger data-testid="hour-select" className="flex-1">
               <SelectValue placeholder="HH" />
             </SelectTrigger>
             <SelectContent>
@@ -98,7 +99,7 @@ export function DateTimePicker({ value, onChange, className, "aria-label": ariaL
           </Select>
           <span className="text-sm font-medium">:</span>
           <Select value={String(value.getMinutes())} onValueChange={handleMinuteChange}>
-            <SelectTrigger className="flex-1">
+            <SelectTrigger data-testid="minute-select" className="flex-1">
               <SelectValue placeholder="MM" />
             </SelectTrigger>
             <SelectContent>
