@@ -6,18 +6,47 @@ from fastapi import HTTPException
 OSRM_URL = os.environ.get('OSRM_URL', 'http://osrm:5555')
 
 
+def _extract_steps_with_edges(leg: dict) -> list[dict]:
+    annotation = leg.get('annotation', {})
+    nodes = annotation.get('nodes', [])
+    steps = leg.get('steps', [])
+
+    if len(nodes) < 2:
+        return []
+
+    node_index = 0
+    result = []
+    for step in steps:
+        num_coords = len(step.get('geometry', {}).get('coordinates', []))
+        num_edges = max(num_coords - 1, 0)
+
+        if step.get('distance', 0) > 0 and num_edges > 0:
+            edge_ids = []
+            for i in range(node_index, node_index + num_edges):
+                if i < len(nodes) - 1:
+                    a, b = nodes[i], nodes[i + 1]
+                    edge_ids.append(f'{min(a, b)}-{max(a, b)}')
+
+            if edge_ids:
+                result.append(
+                    {
+                        'name': step.get('name', '') or 'unnamed',
+                        'edge_ids': edge_ids,
+                    }
+                )
+
+        if num_coords > 1:
+            node_index += num_edges
+
+    return result
+
+
 def query_route(
     origin_lat: float,
     origin_lng: float,
     dest_lat: float,
     dest_lng: float,
 ) -> dict:
-    """Query OSRM for a driving route between two coordinates.
-
-    OSRM uses longitude,latitude order in its URL format.
-    Returns dict with geometry (GeoJSON), duration (seconds),
-    and the raw OSRM response legs.
-    """
     url = (
         f'{OSRM_URL}/route/v1/driving/'
         f'{origin_lng},{origin_lat};{dest_lng},{dest_lat}'
@@ -48,22 +77,12 @@ def query_route(
 
     osrm_route = data['routes'][0]
 
-    steps = []
+    steps_with_edges = []
     for leg in osrm_route.get('legs', []):
-        for step in leg.get('steps', []):
-            if step.get('distance', 0) > 0 and step.get('geometry'):
-                steps.append(
-                    {
-                        'name': step.get('name', ''),
-                        'geometry': step['geometry'],
-                        'distance': step['distance'],
-                        'duration': step.get('duration', 0),
-                    }
-                )
+        steps_with_edges.extend(_extract_steps_with_edges(leg))
 
     return {
         'geometry': osrm_route.get('geometry'),
         'duration': osrm_route.get('duration'),
-        'legs': osrm_route.get('legs', []),
-        'steps': steps,
+        'steps': steps_with_edges,
     }

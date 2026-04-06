@@ -17,3 +17,4 @@ class RoadSegment(BaseDBModel):
     region = mapped_column(Text, nullable=False)
     capacity = mapped_column(Integer, nullable=True)
     coordinates = mapped_column(JSONB, nullable=True)
+    edge_ids = mapped_column(JSONB, nullable=True)

@@ -1,5 +1,4 @@
 import hashlib
-import json
 
 from models.road_segment import RoadSegment
 from models.route import Route
@@ -8,39 +7,47 @@ from sqlalchemy.orm import Session
 from services.osrm import query_route
 
 
-def _geometry_hash(geometry: dict) -> str:
-    coords = geometry.get('coordinates', [])
-    rounded = [[round(c, 5) for c in point] for point in coords]
-    raw = json.dumps(rounded, separators=(',', ':'))
+def _find_overlapping_segment(edge_ids: list[str], db: Session) -> RoadSegment | None:
+    segments = db.query(RoadSegment).filter(RoadSegment.edge_ids.isnot(None)).all()
+    for segment in segments:
+        stored_edges = set(segment.edge_ids)
+        if stored_edges & set(edge_ids):
+            return segment
+    return None
+
+
+def _edge_hash(edge_ids: list[str]) -> str:
+    raw = ','.join(sorted(edge_ids))
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
 def _find_or_create_segments(steps: list[dict], db: Session) -> list[str]:
     segment_ids = []
-    for step in steps:
-        geo_hash = _geometry_hash(step['geometry'])
+    seen_segment_ids = set()
 
-        existing = (
-            db.query(RoadSegment).filter(RoadSegment.osm_way_id == geo_hash).first()
-        )
+    for step in steps:
+        edge_ids = step['edge_ids']
+
+        existing = _find_overlapping_segment(edge_ids, db)
         if existing:
-            segment_ids.append(str(existing.segment_id))
+            sid = str(existing.segment_id)
+            if sid not in seen_segment_ids:
+                segment_ids.append(sid)
+                seen_segment_ids.add(sid)
             continue
 
-        coords = step['geometry'].get('coordinates', [])
-        first_coord = coords[0] if coords else [0, 0]
-        region = f'{round(first_coord[1], 2)},{round(first_coord[0], 2)}'
-
         segment = RoadSegment(
-            osm_way_id=geo_hash,
+            osm_way_id=_edge_hash(edge_ids),
             name=step.get('name') or 'unnamed',
-            region=region,
+            region='',
             capacity=5,
-            coordinates=step['geometry'],
+            edge_ids=edge_ids,
         )
         db.add(segment)
         db.flush()
-        segment_ids.append(str(segment.segment_id))
+        sid = str(segment.segment_id)
+        segment_ids.append(sid)
+        seen_segment_ids.add(sid)
 
     return segment_ids
 
