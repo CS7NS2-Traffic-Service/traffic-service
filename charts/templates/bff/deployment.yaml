@@ -22,6 +22,10 @@ spec:
       labels:
         app: bff
     spec:
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+        - name: {{ .Values.imagePullSecret }}
+      {{- end }}
       containers:
         - name: bff
           image: {{ .Values.image.registry }}/bff:{{ .Values.image.tag }}

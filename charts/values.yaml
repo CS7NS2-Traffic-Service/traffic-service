@@ -2,6 +2,8 @@ image:
   registry: ghcr.io/cs7ns2-traffic-service/traffic-service
   tag: latest
 
+imagePullSecret: ""
+
 replicaCount:
   apiGateway: 1
   bff: 1
@@ -10,10 +12,20 @@ replicaCount:
   routesService: 1
   conflictDetection: 1
   messagingService: 1
+  pgadmin: 1
+  redisinsight: 1
+
+apiGateway:
+  serviceType: NodePort
 
 postgres:
   instances: 1
   storageSize: 1Gi
+
+storage:
+  createStorageClass: false
+  className: gp2
+  type: gp2
 
 ports:
   apiGateway: 8000

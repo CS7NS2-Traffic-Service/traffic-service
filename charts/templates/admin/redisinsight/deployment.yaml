@@ -9,7 +9,7 @@ spec:
   selector:
     matchLabels:
       app: redisinsight
-  replicas: 1
+  replicas: {{ .Values.replicaCount.redisinsight }}
   strategy:
     rollingUpdate:
       maxSurge: 25%

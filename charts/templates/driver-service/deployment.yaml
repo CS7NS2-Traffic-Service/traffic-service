@@ -23,6 +23,10 @@ spec:
       labels:
         app: driver-service
     spec:
+      {{- if .Values.imagePullSecret }}
+      imagePullSecrets:
+        - name: {{ .Values.imagePullSecret }}
+      {{- end }}
       initContainers:
         - name: wait-for-migrations
           image: postgres:16

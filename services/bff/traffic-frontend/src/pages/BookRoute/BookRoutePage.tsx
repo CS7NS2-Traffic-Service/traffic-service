@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { DateTimePicker } from "@/components/ui/date-time-picker"
 import { findRoute, getRouteSegments, getSegmentUtilization } from "@/api/routes"
 import RouteMap from "@/components/RouteMap"
 import RouteResultCard from "./RouteResultCard"
@@ -16,7 +17,18 @@ function BookRoutePage() {
   const originLng = searchParams.get("originLng") ?? ""
   const destLat = searchParams.get("destLat") ?? ""
   const destLng = searchParams.get("destLng") ?? ""
-  const departureTime = searchParams.get("departure") ?? new Date().toISOString().slice(0, 16)
+  const fiveMinutesMs = 5 * 60 * 1000
+  const roundTo5 = useCallback((d: Date) => {
+    return new Date(Math.round(d.getTime() / fiveMinutesMs) * fiveMinutesMs)
+  }, [fiveMinutesMs])
+  const defaultDeparture = useMemo(() => roundTo5(new Date()), [roundTo5])
+  const rawDeparture = searchParams.get("departure")
+  const departureDate = useMemo(() => {
+    const candidate = rawDeparture ? new Date(rawDeparture) : defaultDeparture
+    if (isNaN(candidate.getTime())) return defaultDeparture
+    return roundTo5(candidate)
+  }, [rawDeparture, defaultDeparture, roundTo5])
+  const departureTimeIso = useMemo(() => departureDate.toISOString(), [departureDate])
   const clickCountRef = useRef(0)
 
   const setParam = (key: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -25,6 +37,15 @@ function BookRoutePage() {
       next.set(key, e.target.value)
       return next
     }, { replace: true })
+
+  const handleDepartureChange = useCallback((date: Date) => {
+    const rounded = roundTo5(date)
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.set("departure", rounded.toISOString().slice(0, 16))
+      return next
+    }, { replace: true })
+  }, [roundTo5, setSearchParams])
 
   const originCoord = useMemo<Coord | null>(() => {
     const lat = parseFloat(originLat)
@@ -57,11 +78,11 @@ function BookRoutePage() {
   })
 
   const { data: utilizationData } = useQuery({
-    queryKey: ["utilization", route?.route_id, departureTime],
+    queryKey: ["utilization", route?.route_id, departureTimeIso],
     queryFn: () => {
-      const windowStart = new Date(departureTime).toISOString()
+      const windowStart = departureTimeIso
       const windowEnd = new Date(
-        new Date(departureTime).getTime() + (route!.estimated_duration ?? 0) * 1000,
+        departureDate.getTime() + (route!.estimated_duration ?? 0) * 1000,
       ).toISOString()
       return getSegmentUtilization(
         segments!.map((s) => s.segment_id),
@@ -82,10 +103,12 @@ function BookRoutePage() {
 
   const handleMapClick = useCallback((lngLat: Coord) => {
     if (clickCountRef.current === 0) {
-      setSearchParams(new URLSearchParams({
-        originLat: lngLat.lat.toFixed(6),
-        originLng: lngLat.lng.toFixed(6),
-      }), { replace: true })
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev)
+        next.set("originLat", lngLat.lat.toFixed(6))
+        next.set("originLng", lngLat.lng.toFixed(6))
+        return next
+      }, { replace: true })
       clickCountRef.current = 1
     } else {
       setSearchParams((prev) => {
@@ -176,7 +199,11 @@ function BookRoutePage() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-medium">Departure Time</label>
-                  <Input type="datetime-local" value={departureTime} onChange={setParam("departure")} />
+                  <DateTimePicker
+                    value={departureDate}
+                    onChange={handleDepartureChange}
+                    aria-label="Departure time"
+                  />
                 </div>
                 <Button type="submit" disabled={isPending || !isValid || outOfRange}>
                   {isPending ? "Searching..." : "Find Route"}
@@ -193,7 +220,7 @@ function BookRoutePage() {
             </CardContent>
           </Card>
 
-          {route && <RouteResultCard route={route} segments={segments} utilization={utilization} departureTime={departureTime} />}
+          {route && <RouteResultCard route={route} segments={segments} utilization={utilization} departureTime={departureTimeIso} />}
         </div>
 
         <div className="lg:sticky lg:top-8 lg:self-start">
