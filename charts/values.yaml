@@ -11,6 +11,9 @@ replicaCount:
   conflictDetection: 1
   messagingService: 1
 
+apiGateway:
+  serviceType: NodePort
+
 postgres:
   instances: 1
   storageSize: 1Gi

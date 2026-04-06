@@ -6,10 +6,12 @@ metadata:
 spec:
   selector:
     app: api-gateway
-  type: NodePort
+  type: {{ .Values.apiGateway.serviceType }}
   ports:
     - name: api-gateway
       port: {{ .Values.ports.apiGateway }}
       targetPort: {{ .Values.ports.apiGateway }}
+      {{- if eq .Values.apiGateway.serviceType "NodePort" }}
       nodePort: {{ .Values.ports.nodePort }}
+      {{- end }}
 ---
