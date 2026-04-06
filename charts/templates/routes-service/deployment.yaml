@@ -55,7 +55,7 @@ spec:
               memory: 100Mi
           livenessProbe:
             httpGet:
-              path: /health
+              path: /health/live
               port: {{ .Values.ports.routesService }}
             initialDelaySeconds: 15
             timeoutSeconds: 5
@@ -63,7 +63,7 @@ spec:
             periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /health
+              path: /health/ready
               port: {{ .Values.ports.routesService }}
             initialDelaySeconds: 5
             timeoutSeconds: 2

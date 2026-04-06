@@ -1,7 +1,17 @@
 package domain
 
+import "time"
+
 type Event interface {
 	Stream() string
+}
+
+type EventEnvelope struct {
+	EventID       string    `json:"event_id"`
+	CorrelationID string    `json:"correlation_id"`
+	EventType     string    `json:"event_type"`
+	CreatedAt     time.Time `json:"created_at"`
+	Data          any       `json:"data"`
 }
 
 type BookingCreatedEvent struct {

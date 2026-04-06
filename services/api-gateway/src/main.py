@@ -1,5 +1,6 @@
 import logging
 import os
+import uuid
 
 import httpx
 import redis.asyncio as aioredis
@@ -37,7 +38,7 @@ def get_service_url(service: str) -> str | None:
 
 
 def is_public(method: str, path: str) -> bool:
-    if path == '/health':
+    if path in {'/health', '/health/live', '/health/ready'}:
         return True
     if not path.startswith('/api/'):
         return True
@@ -101,6 +102,23 @@ async def health():
     return {'status': 'ok'}
 
 
+@app.get('/health/live')
+async def health_live():
+    return {'status': 'live'}
+
+
+@app.get('/health/ready')
+async def health_ready():
+    try:
+        await redis_client.ping()
+    except RedisConnectionError:
+        return JSONResponse(
+            status_code=503,
+            content={'status': 'not_ready', 'dependency': 'redis'},
+        )
+    return {'status': 'ready'}
+
+
 async def proxy(
     request: Request,
     target: str,
@@ -113,6 +131,8 @@ async def proxy(
     driver_id = getattr(request.state, 'driver_id', None)
     if driver_id:
         headers['x-driver-id'] = driver_id
+    correlation_id = request.headers.get('x-correlation-id') or str(uuid.uuid4())
+    headers['x-correlation-id'] = correlation_id
 
     resp = await client.request(
         method=request.method,
@@ -123,7 +143,7 @@ async def proxy(
     return StreamingResponse(
         resp.aiter_bytes(),
         status_code=resp.status_code,
-        headers=dict(resp.headers),
+        headers={**dict(resp.headers), 'x-correlation-id': correlation_id},
     )
 
 

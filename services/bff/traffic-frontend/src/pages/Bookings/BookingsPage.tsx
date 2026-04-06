@@ -165,6 +165,10 @@ function BookingsPage() {
 
       <div className="space-y-4">
         <h2 className="text-lg font-semibold">Your Bookings</h2>
+        <p className="text-sm text-muted-foreground">
+          Pending bookings are reviewed asynchronously. Approved bookings reserve road capacity for
+          your selected departure window.
+        </p>
         {filteredBookings && filteredBookings.length === 0 && (
           <p className="text-sm text-muted-foreground">No bookings yet.</p>
         )}

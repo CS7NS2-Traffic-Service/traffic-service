@@ -59,10 +59,19 @@ spec:
               name: driver-service
           livenessProbe:
             httpGet:
-              path: /health
+              path: /health/live
               port: {{ .Values.ports.driverService }}
             initialDelaySeconds: 5
             timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: {{ .Values.ports.driverService }}
+            initialDelaySeconds: 5
+            timeoutSeconds: 2
             successThreshold: 1
             failureThreshold: 3
             periodSeconds: 10
@@ -73,5 +82,12 @@ spec:
                   name: traffic-config
                   key: DATABASE_URL
             - name: JWT_SECRET_KEY
-              value: super-secret-key
+              valueFrom:
+                configMapKeyRef:
+                  name: traffic-config
+                  key: JWT_SECRET_KEY
+            - name: APP_ENV
+              value: production
+            - name: SEED_TEST_USER
+              value: "false"
 ---

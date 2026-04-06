@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/lukaslinss98/booking-service/internal/domain"
 	"github.com/redis/go-redis/v9"
 )
@@ -20,7 +22,15 @@ func NewEventPublisher(client *redis.Client) *EventPublisher {
 }
 
 func (ep *EventPublisher) Publish(ctx context.Context, event domain.Event) error {
-	data, err := json.Marshal(event)
+	envelope := domain.EventEnvelope{
+		EventID:       uuid.NewString(),
+		CorrelationID: domain.CorrelationIDFromContext(ctx),
+		EventType:     event.Stream(),
+		CreatedAt:     time.Now().UTC(),
+		Data:          event,
+	}
+
+	data, err := json.Marshal(envelope)
 	if err != nil {
 		log.Printf("failed to marshal event %s: %v", event.Stream(), err)
 		return err
@@ -34,6 +44,6 @@ func (ep *EventPublisher) Publish(ctx context.Context, event domain.Event) error
 		return err
 	}
 
-	log.Printf("published event %s", event.Stream())
+	log.Printf("published event %s correlation=%s", event.Stream(), envelope.CorrelationID)
 	return nil
 }

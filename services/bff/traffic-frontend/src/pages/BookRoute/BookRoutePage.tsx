@@ -127,6 +127,15 @@ function BookRoutePage() {
   }
 
   const isValid = originLat && originLng && destLat && destLng
+  const originLatValue = parseFloat(originLat)
+  const originLngValue = parseFloat(originLng)
+  const destLatValue = parseFloat(destLat)
+  const destLngValue = parseFloat(destLng)
+  const outOfRange =
+    (!isNaN(originLatValue) && (originLatValue < -90 || originLatValue > 90)) ||
+    (!isNaN(destLatValue) && (destLatValue < -90 || destLatValue > 90)) ||
+    (!isNaN(originLngValue) && (originLngValue < -180 || originLngValue > 180)) ||
+    (!isNaN(destLngValue) && (destLngValue < -180 || destLngValue > 180))
 
   const mapSegments = segments?.map((seg) => ({
     segment_id: seg.segment_id,
@@ -196,9 +205,14 @@ function BookRoutePage() {
                     aria-label="Departure time"
                   />
                 </div>
-                <Button type="submit" disabled={isPending || !isValid}>
+                <Button type="submit" disabled={isPending || !isValid || outOfRange}>
                   {isPending ? "Searching..." : "Find Route"}
                 </Button>
+                {outOfRange && (
+                  <p className="text-xs text-red-500">
+                    Latitude must be between -90 and 90, longitude between -180 and 180.
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   Tip: click the map to set origin (1st click) and destination (2nd click)
                 </p>
