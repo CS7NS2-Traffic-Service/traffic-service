@@ -43,41 +43,6 @@ def ensure_consumer_group(stream: str) -> None:
             raise
 
 
-def mark_processed(event_id: str, consumer: str, stream: str) -> bool:
-    db = SessionLocal()
-    try:
-        db.add(
-            ProcessedEvent(
-                event_id=event_id,
-                consumer_name=consumer,
-                stream_name=stream,
-            )
-        )
-        db.commit()
-        return True
-    except IntegrityError:
-        db.rollback()
-        return False
-    finally:
-        db.close()
-
-
-def is_processed(event_id: str, consumer: str) -> bool:
-    db = SessionLocal()
-    try:
-        found = (
-            db.query(ProcessedEvent)
-            .filter(
-                ProcessedEvent.event_id == event_id,
-                ProcessedEvent.consumer_name == consumer,
-            )
-            .first()
-        )
-        return found is not None
-    finally:
-        db.close()
-
-
 def parse_envelope(fields: dict, stream: str, msg_id: str) -> dict:
     raw = json.loads(fields['data'])
     if isinstance(raw, dict) and raw.get('event_id') and 'data' in raw:
@@ -103,75 +68,74 @@ def publish_to_dlq(stream: str, msg_id: str, fields: dict, error: Exception) -> 
     redis_client.xadd(f'{stream}.dlq', {'data': json.dumps(payload)})
 
 
-def handle_booking_created(data: dict, correlation_id: str) -> None:
+def handle_booking_created(
+    db,
+    data: dict,
+    event_id: str,
+    consumer: str,
+    stream: str,
+) -> dict | None:
     booking_id = data['booking_id']
     route_id = data['route_id']
     departure_time = datetime.fromisoformat(
         data['departure_time'].replace('Z', '+00:00')
     )
 
-    db = SessionLocal()
-    try:
-        route = db.query(Route).filter(Route.route_id == route_id).first()
-        if route is None:
-            logger.warning('Route %s not found', route_id)
-            publish_event(
-                'route.assessed',
-                {
-                    'booking_id': booking_id,
-                    'route_id': route_id,
-                    'segments_available': False,
-                },
-                correlation_id=correlation_id,
-            )
-            return
+    route = db.query(Route).filter(Route.route_id == route_id).first()
+    if route is None:
+        logger.warning('Route %s not found', route_id)
+        event_payload = {
+            'booking_id': booking_id,
+            'route_id': route_id,
+            'segments_available': False,
+        }
+        _mark_processed(db, event_id, consumer, stream)
+        db.commit()
+        return event_payload
 
-        segment_ids = [str(sid) for sid in (route.segment_ids or [])]
-        duration = route.estimated_duration or 3600
+    segment_ids = [str(sid) for sid in (route.segment_ids or [])]
+    duration = route.estimated_duration or 3600
 
-        if not segment_ids:
-            publish_event(
-                'route.assessed',
-                {
-                    'booking_id': booking_id,
-                    'route_id': route_id,
-                    'segments_available': True,
-                },
-                correlation_id=correlation_id,
-            )
-            return
+    if not segment_ids:
+        event_payload = {
+            'booking_id': booking_id,
+            'route_id': route_id,
+            'segments_available': True,
+        }
+        _mark_processed(db, event_id, consumer, stream)
+        db.commit()
+        return event_payload
 
-        result = assess_and_reserve(
-            booking_id=booking_id,
-            route_id=route_id,
-            segment_ids=segment_ids,
-            departure_time=departure_time,
-            duration_seconds=duration,
-            db=db,
-        )
+    result = assess_and_reserve(
+        booking_id=booking_id,
+        route_id=route_id,
+        segment_ids=segment_ids,
+        departure_time=departure_time,
+        duration_seconds=duration,
+        db=db,
+    )
 
-        publish_event(
-            'route.assessed',
-            {
-                'booking_id': result.booking_id,
-                'route_id': result.route_id,
-                'segments_available': result.segments_available,
-            },
-            correlation_id=correlation_id,
-        )
-    finally:
-        db.close()
+    event_payload = {
+        'booking_id': result.booking_id,
+        'route_id': result.route_id,
+        'segments_available': result.segments_available,
+    }
+    _mark_processed(db, event_id, consumer, stream)
+    db.commit()
+    return event_payload
 
 
-def handle_booking_updated(data: dict) -> None:
+def handle_booking_updated(
+    db,
+    data: dict,
+    event_id: str,
+    consumer: str,
+    stream: str,
+) -> None:
     booking_id = data['booking_id']
     status = data['status']
 
-    if status not in ('CANCELLED', 'EXPIRED'):
-        return
-
-    db = SessionLocal()
-    try:
+    if status in ('CANCELLED', 'EXPIRED'):
         count = delete_reservations(booking_id, db)
         logger.info(
             'Released %d reservations for %s booking %s',
@@ -179,8 +143,38 @@ def handle_booking_updated(data: dict) -> None:
             status,
             booking_id,
         )
-    finally:
-        db.close()
+
+    _mark_processed(db, event_id, consumer, stream)
+    db.commit()
+
+
+def _mark_processed(db, event_id: str, consumer: str, stream: str) -> None:
+    db.add(
+        ProcessedEvent(
+            event_id=event_id,
+            consumer_name=consumer,
+            stream_name=stream,
+        )
+    )
+
+
+def process_with_retry(handler, **kwargs):
+    last_err = None
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        db = SessionLocal()
+        try:
+            result = handler(db=db, **kwargs)
+            return result
+        except IntegrityError:
+            db.rollback()
+            return None
+        except Exception as exc:
+            db.rollback()
+            last_err = exc
+            time.sleep(0.2 * (attempt**2))
+        finally:
+            db.close()
+    raise last_err
 
 
 def run_consumer(stop_event: Event | None = None) -> None:
@@ -198,34 +192,26 @@ def run_consumer(stop_event: Event | None = None) -> None:
             for _, entries in messages:
                 for msg_id, fields in entries:
                     envelope = parse_envelope(fields, CREATED_STREAM, msg_id)
-                    event_id = envelope['event_id']
-                    if is_processed(event_id, CREATED_CONSUMER):
+                    correlation_id = envelope.get('correlation_id', str(uuid4()))
+
+                    try:
+                        event_payload = process_with_retry(
+                            handle_booking_created,
+                            data=envelope['data'],
+                            event_id=envelope['event_id'],
+                            consumer=CREATED_CONSUMER,
+                            stream=CREATED_STREAM,
+                        )
+                    except Exception as exc:
+                        publish_to_dlq(CREATED_STREAM, msg_id, fields, exc)
                         redis_client.xack(CREATED_STREAM, GROUP, msg_id)
                         continue
 
-                    last_error = None
-                    for attempt in range(1, MAX_ATTEMPTS + 1):
-                        try:
-                            handle_booking_created(
-                                envelope['data'],
-                                envelope.get('correlation_id', str(uuid4())),
-                            )
-                            last_error = None
-                            break
-                        except Exception as exc:
-                            last_error = exc
-                            time.sleep(0.2 * (attempt**2))
-
-                    if last_error is not None:
-                        publish_to_dlq(CREATED_STREAM, msg_id, fields, last_error)
-                        redis_client.xack(CREATED_STREAM, GROUP, msg_id)
-                        continue
-
-                    if not mark_processed(event_id, CREATED_CONSUMER, CREATED_STREAM):
-                        logger.info(
-                            'Event %s already marked processed for %s',
-                            event_id,
-                            CREATED_CONSUMER,
+                    if event_payload is not None:
+                        publish_event(
+                            'route.assessed',
+                            event_payload,
+                            correlation_id=correlation_id,
                         )
                     redis_client.xack(CREATED_STREAM, GROUP, msg_id)
         except Exception:
@@ -248,32 +234,20 @@ def run_updated_consumer(stop_event: Event | None = None) -> None:
             for _, entries in messages:
                 for msg_id, fields in entries:
                     envelope = parse_envelope(fields, UPDATED_STREAM, msg_id)
-                    event_id = envelope['event_id']
-                    if is_processed(event_id, UPDATED_CONSUMER):
-                        redis_client.xack(UPDATED_STREAM, GROUP, msg_id)
-                        continue
 
-                    last_error = None
-                    for attempt in range(1, MAX_ATTEMPTS + 1):
-                        try:
-                            handle_booking_updated(envelope['data'])
-                            last_error = None
-                            break
-                        except Exception as exc:
-                            last_error = exc
-                            time.sleep(0.2 * (attempt**2))
-
-                    if last_error is not None:
-                        publish_to_dlq(UPDATED_STREAM, msg_id, fields, last_error)
-                        redis_client.xack(UPDATED_STREAM, GROUP, msg_id)
-                        continue
-
-                    if not mark_processed(event_id, UPDATED_CONSUMER, UPDATED_STREAM):
-                        logger.info(
-                            'Event %s already marked processed for %s',
-                            event_id,
-                            UPDATED_CONSUMER,
+                    try:
+                        process_with_retry(
+                            handle_booking_updated,
+                            data=envelope['data'],
+                            event_id=envelope['event_id'],
+                            consumer=UPDATED_CONSUMER,
+                            stream=UPDATED_STREAM,
                         )
+                    except Exception as exc:
+                        publish_to_dlq(UPDATED_STREAM, msg_id, fields, exc)
+                        redis_client.xack(UPDATED_STREAM, GROUP, msg_id)
+                        continue
+
                     redis_client.xack(UPDATED_STREAM, GROUP, msg_id)
         except Exception:
             logger.exception('Updated consumer error')
