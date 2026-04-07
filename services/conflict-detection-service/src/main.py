@@ -2,13 +2,13 @@ import logging
 import threading
 from contextlib import asynccontextmanager
 
-from consumer import redis_client
-from database import SessionLocal
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from infrastructure.consumer.consumer import redis_client
+from infrastructure.database import SessionLocal
+from infrastructure.http.routes.reservations import router as reservations_router
+from infrastructure.http.routes.utilization import router as utilization_router
 from redis.exceptions import RedisError
-from routes.reservations import router as reservations_router
-from routes.utilization import router as utilization_router
 from sqlalchemy import text
 
 logging.basicConfig(level=logging.INFO)
@@ -16,8 +16,8 @@ logging.basicConfig(level=logging.INFO)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from consumer import run_consumer, run_updated_consumer
-    from outbox_relay import run_cleanup, run_relay
+    from infrastructure.consumer.consumer import run_consumer, run_updated_consumer
+    from infrastructure.outbox_relay.relay import run_cleanup, run_relay
 
     stop_event = threading.Event()
     kwargs = {'stop_event': stop_event}

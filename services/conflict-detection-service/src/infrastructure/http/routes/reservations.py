@@ -1,8 +1,8 @@
-from dependencies import get_db_connection
+from application.conflict_service import ConflictService
 from fastapi import APIRouter, Depends
-from models.segment_reservation import SegmentReservation
-from schemas import ReservationItem
-from sqlalchemy.orm import Session
+
+from infrastructure.dependencies import get_conflict_service
+from infrastructure.http.schemas import ReservationItem
 
 router = APIRouter()
 
@@ -13,14 +13,9 @@ router = APIRouter()
 )
 def get_booking_reservations(
     booking_id: str,
-    db: Session = Depends(get_db_connection),
+    service: ConflictService = Depends(get_conflict_service),
 ) -> list[ReservationItem]:
-    rows = (
-        db.query(SegmentReservation)
-        .filter(SegmentReservation.booking_id == booking_id)
-        .order_by(SegmentReservation.time_window_start)
-        .all()
-    )
+    reservations = service.get_reservations_by_booking(booking_id)
     return [
         ReservationItem(
             reservation_id=str(r.reservation_id),
@@ -28,5 +23,5 @@ def get_booking_reservations(
             time_window_start=r.time_window_start,
             time_window_end=r.time_window_end,
         )
-        for r in rows
+        for r in reservations
     ]

@@ -6,8 +6,9 @@ from datetime import UTC, datetime, timedelta
 from threading import Event
 
 import redis
-from database import SessionLocal
-from models.outbox_event import OutboxEvent
+
+from infrastructure.database import SessionLocal
+from infrastructure.postgres.models.outbox_event import OutboxEvent
 
 logger = logging.getLogger(__name__)
 

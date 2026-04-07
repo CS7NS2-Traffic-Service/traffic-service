@@ -1,7 +1,8 @@
-from database import BaseDBModel
 from sqlalchemy import DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import mapped_column
+
+from infrastructure.database import BaseDBModel
 
 
 class SegmentReservation(BaseDBModel):

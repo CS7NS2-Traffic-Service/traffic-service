@@ -1,7 +1,8 @@
-from database import BaseDBModel
 from sqlalchemy import Integer, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import mapped_column
+
+from infrastructure.database import BaseDBModel
 
 
 class RoadSegment(BaseDBModel):

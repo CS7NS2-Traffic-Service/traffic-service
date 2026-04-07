@@ -7,12 +7,17 @@ from threading import Event
 from uuid import uuid4
 
 import redis
-from database import SessionLocal
-from models.outbox_event import OutboxEvent
-from models.processed_event import ProcessedEvent
-from models.route import Route
-from services.conflict import assess_and_reserve, delete_reservations
+from application.use_cases import AssessRouteUseCase, ReleaseReservationsUseCase
 from sqlalchemy.exc import IntegrityError
+
+from infrastructure.database import SessionLocal
+from infrastructure.postgres.outbox_repository import PostgresOutboxRepository
+from infrastructure.postgres.processed_event_repository import (
+    PostgresProcessedEventRepository,
+)
+from infrastructure.postgres.reservation_repository import PostgresReservationRepository
+from infrastructure.postgres.route_repository import PostgresRouteRepository
+from infrastructure.postgres.segment_repository import PostgresSegmentRepository
 
 logger = logging.getLogger(__name__)
 
@@ -32,12 +37,7 @@ MAX_ATTEMPTS = 3
 
 def ensure_consumer_group(stream: str) -> None:
     try:
-        redis_client.xgroup_create(
-            stream,
-            GROUP,
-            id='0',
-            mkstream=True,
-        )
+        redis_client.xgroup_create(stream, GROUP, id='0', mkstream=True)
     except redis.exceptions.ResponseError as e:
         if 'BUSYGROUP' not in str(e):
             raise
@@ -47,7 +47,6 @@ def parse_envelope(fields: dict, stream: str, msg_id: str) -> dict:
     raw = json.loads(fields['data'])
     if isinstance(raw, dict) and raw.get('event_id') and 'data' in raw:
         return raw
-
     return {
         'event_id': f'{stream}:{msg_id}',
         'correlation_id': str(uuid4()),
@@ -68,6 +67,23 @@ def publish_to_dlq(stream: str, msg_id: str, fields: dict, error: Exception) -> 
     redis_client.xadd(f'{stream}.dlq', {'data': json.dumps(payload)})
 
 
+def _make_assess_use_case(db) -> AssessRouteUseCase:
+    return AssessRouteUseCase(
+        route_repo=PostgresRouteRepository(db),
+        segment_repo=PostgresSegmentRepository(db),
+        reservation_repo=PostgresReservationRepository(db),
+        processed_event_repo=PostgresProcessedEventRepository(db),
+        outbox_repo=PostgresOutboxRepository(db),
+    )
+
+
+def _make_release_use_case(db) -> ReleaseReservationsUseCase:
+    return ReleaseReservationsUseCase(
+        reservation_repo=PostgresReservationRepository(db),
+        processed_event_repo=PostgresProcessedEventRepository(db),
+    )
+
+
 def handle_booking_created(
     db,
     data: dict,
@@ -82,49 +98,15 @@ def handle_booking_created(
         data['departure_time'].replace('Z', '+00:00')
     )
 
-    route = db.query(Route).filter(Route.route_id == route_id).first()
-    if route is None:
-        logger.warning('Route %s not found', route_id)
-        event_data = {
-            'booking_id': booking_id,
-            'route_id': route_id,
-            'segments_available': False,
-        }
-        _mark_processed(db, event_id, consumer, stream)
-        _enqueue_outbox(db, 'route.assessed', event_data, correlation_id)
-        db.commit()
-        return
-
-    segment_ids = [str(sid) for sid in (route.segment_ids or [])]
-    duration = route.estimated_duration or 3600
-
-    if not segment_ids:
-        event_data = {
-            'booking_id': booking_id,
-            'route_id': route_id,
-            'segments_available': True,
-        }
-        _mark_processed(db, event_id, consumer, stream)
-        _enqueue_outbox(db, 'route.assessed', event_data, correlation_id)
-        db.commit()
-        return
-
-    result = assess_and_reserve(
+    _make_assess_use_case(db).execute(
         booking_id=booking_id,
         route_id=route_id,
-        segment_ids=segment_ids,
         departure_time=departure_time,
-        duration_seconds=duration,
-        db=db,
+        event_id=event_id,
+        consumer_name=consumer,
+        stream_name=stream,
+        correlation_id=correlation_id,
     )
-
-    event_data = {
-        'booking_id': result.booking_id,
-        'route_id': result.route_id,
-        'segments_available': result.segments_available,
-    }
-    _mark_processed(db, event_id, consumer, stream)
-    _enqueue_outbox(db, 'route.assessed', event_data, correlation_id)
     db.commit()
 
 
@@ -139,49 +121,31 @@ def handle_booking_updated(
     status = data['status']
 
     if status in ('CANCELLED', 'EXPIRED'):
-        count = delete_reservations(booking_id, db)
-        logger.info(
-            'Released %d reservations for %s booking %s',
-            count,
-            status,
-            booking_id,
-        )
-
-    _mark_processed(db, event_id, consumer, stream)
-    db.commit()
-
-
-def _mark_processed(db, event_id: str, consumer: str, stream: str) -> None:
-    db.add(
-        ProcessedEvent(
+        count = _make_release_use_case(db).execute(
+            booking_id=booking_id,
             event_id=event_id,
             consumer_name=consumer,
             stream_name=stream,
         )
-    )
+        logger.info(
+            'Released %d reservations for %s booking %s', count, status, booking_id
+        )
+    else:
+        processed_event_repo = PostgresProcessedEventRepository(db)
+        processed_event_repo.mark_processed(event_id, consumer, stream)
+    db.commit()
 
 
-def _enqueue_outbox(db, stream: str, data: dict, correlation_id: str) -> None:
-    envelope = {
-        'event_id': str(uuid4()),
-        'correlation_id': correlation_id,
-        'event_type': stream,
-        'created_at': datetime.now(UTC).isoformat(),
-        'data': data,
-    }
-    db.add(OutboxEvent(stream=stream, payload=envelope))
-
-
-def process_with_retry(handler, **kwargs):
+def process_with_retry(handler, **kwargs) -> None:
     last_err = None
     for attempt in range(1, MAX_ATTEMPTS + 1):
         db = SessionLocal()
         try:
-            result = handler(db=db, **kwargs)
-            return result
+            handler(db=db, **kwargs)
+            return
         except IntegrityError:
             db.rollback()
-            return None
+            return
         except Exception as exc:
             db.rollback()
             last_err = exc
@@ -207,7 +171,6 @@ def run_consumer(stop_event: Event | None = None) -> None:
                 for msg_id, fields in entries:
                     envelope = parse_envelope(fields, CREATED_STREAM, msg_id)
                     correlation_id = envelope.get('correlation_id', str(uuid4()))
-
                     try:
                         process_with_retry(
                             handle_booking_created,
@@ -219,9 +182,6 @@ def run_consumer(stop_event: Event | None = None) -> None:
                         )
                     except Exception as exc:
                         publish_to_dlq(CREATED_STREAM, msg_id, fields, exc)
-                        redis_client.xack(CREATED_STREAM, GROUP, msg_id)
-                        continue
-
                     redis_client.xack(CREATED_STREAM, GROUP, msg_id)
         except Exception:
             logger.exception('Consumer error')
@@ -243,7 +203,6 @@ def run_updated_consumer(stop_event: Event | None = None) -> None:
             for _, entries in messages:
                 for msg_id, fields in entries:
                     envelope = parse_envelope(fields, UPDATED_STREAM, msg_id)
-
                     try:
                         process_with_retry(
                             handle_booking_updated,
@@ -254,9 +213,6 @@ def run_updated_consumer(stop_event: Event | None = None) -> None:
                         )
                     except Exception as exc:
                         publish_to_dlq(UPDATED_STREAM, msg_id, fields, exc)
-                        redis_client.xack(UPDATED_STREAM, GROUP, msg_id)
-                        continue
-
                     redis_client.xack(UPDATED_STREAM, GROUP, msg_id)
         except Exception:
             logger.exception('Updated consumer error')

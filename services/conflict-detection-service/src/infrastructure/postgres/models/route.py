@@ -1,7 +1,8 @@
-from database import BaseDBModel
 from sqlalchemy import DateTime, Integer, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import mapped_column
+
+from infrastructure.database import BaseDBModel
 
 
 class Route(BaseDBModel):

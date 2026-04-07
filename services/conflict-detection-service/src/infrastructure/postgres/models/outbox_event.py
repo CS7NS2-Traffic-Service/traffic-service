@@ -1,9 +1,10 @@
 from datetime import UTC, datetime
 
-from database import BaseDBModel
 from sqlalchemy import BigInteger, Boolean, DateTime, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
+
+from infrastructure.database import BaseDBModel
 
 
 class OutboxEvent(BaseDBModel):

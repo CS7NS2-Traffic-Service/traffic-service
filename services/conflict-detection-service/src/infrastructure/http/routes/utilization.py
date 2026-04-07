@@ -1,12 +1,12 @@
-from dependencies import get_db_connection
+from application.conflict_service import ConflictService
 from fastapi import APIRouter, Depends
-from schemas import (
+
+from infrastructure.dependencies import get_conflict_service
+from infrastructure.http.schemas import (
     SegmentUtilizationItem,
     SegmentUtilizationRequest,
     SegmentUtilizationResponse,
 )
-from services.conflict import get_segment_utilization
-from sqlalchemy.orm import Session
 
 router = APIRouter()
 
@@ -14,13 +14,12 @@ router = APIRouter()
 @router.post('/utilization', response_model=SegmentUtilizationResponse)
 def utilization(
     body: SegmentUtilizationRequest,
-    db: Session = Depends(get_db_connection),
+    service: ConflictService = Depends(get_conflict_service),
 ) -> SegmentUtilizationResponse:
-    counts = get_segment_utilization(
+    counts = service.get_segment_utilization(
         segment_ids=body.segment_ids,
         window_start=body.window_start,
         window_end=body.window_end,
-        db=db,
     )
     items = [
         SegmentUtilizationItem(segment_id=sid, active_reservations=counts.get(sid, 0))
