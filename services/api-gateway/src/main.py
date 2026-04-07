@@ -5,7 +5,7 @@ import uuid
 import httpx
 import redis.asyncio as aioredis
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response
 from jose import JWTError, jwt
 from redis.exceptions import ConnectionError as RedisConnectionError
 
@@ -136,7 +136,7 @@ STRIP_RESPONSE_HEADERS = {
 async def proxy(
     request: Request,
     target: str,
-) -> StreamingResponse:
+) -> Response:
     url = target + request.url.path
     if request.url.query:
         url += f'?{request.url.query}'
@@ -162,8 +162,8 @@ async def proxy(
         k: v for k, v in resp.headers.items() if k.lower() not in STRIP_RESPONSE_HEADERS
     }
     resp_headers['x-correlation-id'] = correlation_id
-    return StreamingResponse(
-        resp.aiter_bytes(),
+    return Response(
+        content=resp.content,
         status_code=resp.status_code,
         headers=resp_headers,
     )
