@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/lukaslinss98/booking-service/internal/application"
 	"github.com/lukaslinss98/booking-service/internal/domain"
 )
 
@@ -45,8 +46,6 @@ func (r *BookingRepository) insertOutbox(ctx context.Context, db DBTX, envelope 
 }
 
 func (r *BookingRepository) Create(ctx context.Context, booking *domain.Booking, envelope *domain.EventEnvelope) (*domain.Booking, error) {
-	booking.BookingID = uuid.New()
-
 	err := r.withTx(ctx, func(tx pgx.Tx) error {
 		sql := `
 			INSERT INTO bookings (booking_id, driver_id, route_id, departure_time, estimated_arrival, status, expires_at)
@@ -140,7 +139,7 @@ func (r *BookingRepository) GetByID(ctx context.Context, bookingID uuid.UUID, dr
 	return &booking, nil
 }
 
-func (r *BookingRepository) UpdateStatus(ctx context.Context, bookingID uuid.UUID, status domain.BookingStatus, envelope *domain.EventEnvelope) (*domain.Booking, error) {
+func (r *BookingRepository) UpdateStatus(ctx context.Context, bookingID uuid.UUID, status domain.BookingStatus, buildEnvelope application.EnvelopeBuilder) (*domain.Booking, error) {
 	var booking domain.Booking
 
 	err := r.withTx(ctx, func(tx pgx.Tx) error {
@@ -164,8 +163,11 @@ func (r *BookingRepository) UpdateStatus(ctx context.Context, bookingID uuid.UUI
 		if err != nil {
 			return err
 		}
-		if envelope != nil {
-			return r.insertOutbox(ctx, tx, envelope)
+		if buildEnvelope != nil {
+			envelope := buildEnvelope(&booking)
+			if envelope != nil {
+				return r.insertOutbox(ctx, tx, envelope)
+			}
 		}
 		return nil
 	})

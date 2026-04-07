@@ -31,14 +31,14 @@ func (s *BookingService) HandleRouteAssessed(ctx context.Context, event domain.R
 		status = domain.StatusApproved
 	}
 
-	updatedEvent := domain.BookingUpdatedEvent{
-		BookingID: event.BookingID,
-		DriverID:  "",
-		Status:    string(status),
-	}
-	envelope := domain.NewEventEnvelope(ctx, updatedEvent)
-
-	booking, err := s.repository.UpdateStatus(ctx, bookingID, status, &envelope)
+	booking, err := s.repository.UpdateStatus(ctx, bookingID, status, func(b *domain.Booking) *domain.EventEnvelope {
+		e := domain.NewEventEnvelope(ctx, domain.BookingUpdatedEvent{
+			BookingID: b.BookingID.String(),
+			DriverID:  b.DriverID.String(),
+			Status:    string(status),
+		})
+		return &e
+	})
 	if err != nil {
 		return err
 	}
@@ -74,14 +74,14 @@ func (s *BookingService) ExpireBookings(ctx context.Context) error {
 	}
 
 	for _, booking := range expired {
-		event := domain.BookingUpdatedEvent{
-			BookingID: booking.BookingID.String(),
-			DriverID:  booking.DriverID.String(),
-			Status:    string(domain.StatusExpired),
-		}
-		envelope := domain.NewEventEnvelope(ctx, event)
-
-		updated, err := s.repository.UpdateStatus(ctx, booking.BookingID, domain.StatusExpired, &envelope)
+		updated, err := s.repository.UpdateStatus(ctx, booking.BookingID, domain.StatusExpired, func(b *domain.Booking) *domain.EventEnvelope {
+			e := domain.NewEventEnvelope(ctx, domain.BookingUpdatedEvent{
+				BookingID: b.BookingID.String(),
+				DriverID:  b.DriverID.String(),
+				Status:    string(domain.StatusExpired),
+			})
+			return &e
+		})
 		if err != nil {
 			log.Printf("failed to expire booking %v: %v", booking.BookingID, err)
 			continue

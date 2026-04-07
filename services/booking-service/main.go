@@ -13,9 +13,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lukaslinss98/booking-service/internal/application"
 	"github.com/lukaslinss98/booking-service/internal/infrastructure/handler"
+	"github.com/lukaslinss98/booking-service/internal/infrastructure/outboxrelay"
 	"github.com/lukaslinss98/booking-service/internal/infrastructure/postgres"
 	"github.com/lukaslinss98/booking-service/internal/infrastructure/redisconsumer"
-	"github.com/lukaslinss98/booking-service/internal/infrastructure/redisproducer"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -32,14 +32,17 @@ func main() {
 	defer pool.Close()
 
 	redisClient := createRediClient()
-	eventPublisher := redisproducer.NewEventPublisher(redisClient)
-	bookingRepository := postgres.NewBookingRepository(pool)
-	bookingService := application.NewBookingService(bookingRepository, eventPublisher)
+	outboxRepo := postgres.NewOutboxRepository()
+	bookingRepository := postgres.NewBookingRepository(pool, outboxRepo)
+	bookingService := application.NewBookingService(bookingRepository)
 	bookingHandler := handler.NewBookingHandler(bookingService)
 	consumer := redisconsumer.NewConsumer(hostname, redisClient, bookingService, bookingRepository)
+	relay := outboxrelay.NewRelay(pool, outboxRepo, redisClient)
 
 	go consumer.Start(ctx)
 	go bookingService.StartExpiryLoop(ctx)
+	go relay.Start(ctx)
+	go relay.StartCleanup(ctx)
 
 	router := chi.NewRouter()
 
