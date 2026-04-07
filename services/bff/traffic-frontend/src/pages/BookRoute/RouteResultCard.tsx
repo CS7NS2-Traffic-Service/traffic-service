@@ -27,6 +27,7 @@ function RouteResultCard({
     onSuccess: (booking) => {
       setBookingResult(booking)
       setBookingError(null)
+      queryClient.invalidateQueries({ queryKey: ["utilization"] })
       queryClient.invalidateQueries({ queryKey: ["bookings"] })
     },
     onError: (err: Error) => {

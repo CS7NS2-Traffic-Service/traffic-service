@@ -117,7 +117,9 @@ function BookRoutePage() {
     queryFn: () => {
       const windowStart = departureTimeIso
       const windowEnd = new Date(
-        departureDate.getTime() + (route!.estimated_duration ?? 0) * 1000,
+        departureDate.getTime() +
+        (route!.estimated_duration ?? 0) * 1000 +
+        (segments!.length - 1) * 300 * 1000,
       ).toISOString()
       return getSegmentUtilization(
         segments!.map((s) => s.segment_id),
