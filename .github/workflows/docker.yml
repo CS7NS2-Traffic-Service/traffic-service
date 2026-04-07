@@ -4,50 +4,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      build_all:
-        description: "Build all services"
-        required: false
-        default: "true"
 
 jobs:
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      api-gateway: ${{ steps.filter.outputs.api-gateway }}
-      bff: ${{ steps.filter.outputs.bff }}
-      driver-service: ${{ steps.filter.outputs.driver-service }}
-      booking-service: ${{ steps.filter.outputs.booking-service }}
-      routes-service: ${{ steps.filter.outputs.routes-service }}
-      conflict-detection: ${{ steps.filter.outputs.conflict-detection }}
-      messaging-service: ${{ steps.filter.outputs.messaging-service }}
-      db-migrate: ${{ steps.filter.outputs.db-migrate }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            api-gateway:
-              - 'services/api-gateway/**'
-            bff:
-              - 'services/bff/**'
-            driver-service:
-              - 'services/driver-service/**'
-            booking-service:
-              - 'services/booking-service/**'
-            routes-service:
-              - 'services/routes-service/**'
-            conflict-detection:
-              - 'services/conflict-detection-service/**'
-            messaging-service:
-              - 'services/messaging-service/**'
-            db-migrate:
-              - 'db/**'
-
   build-api-gateway:
-    needs: changes
-    if: needs.changes.outputs.api-gateway == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -70,8 +29,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
 
   build-bff:
-    needs: changes
-    if: needs.changes.outputs.bff == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -97,8 +54,6 @@ jobs:
           no-cache: true
 
   build-driver-service:
-    needs: changes
-    if: needs.changes.outputs.driver-service == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -121,8 +76,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
 
   build-booking-service:
-    needs: changes
-    if: needs.changes.outputs.booking-service == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -145,8 +98,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
 
   build-routes-service:
-    needs: changes
-    if: needs.changes.outputs.routes-service == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -169,8 +120,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
 
   build-conflict-detection:
-    needs: changes
-    if: needs.changes.outputs.conflict-detection == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -193,8 +142,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
 
   build-messaging-service:
-    needs: changes
-    if: needs.changes.outputs.messaging-service == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -217,8 +164,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
 
   build-db-migrate:
-    needs: changes
-    if: needs.changes.outputs.db-migrate == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -250,7 +195,6 @@ jobs:
       - build-conflict-detection
       - build-messaging-service
       - build-db-migrate
-    if: always() && !cancelled()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
