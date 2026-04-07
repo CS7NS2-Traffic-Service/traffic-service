@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
@@ -7,7 +8,8 @@ import LoginPage from './pages/Login/LoginPage'
 import RegisterPage from './pages/Register/RegisterPage'
 import BookingsPage from './pages/Bookings/BookingsPage'
 import InboxPage from './pages/Inbox/InboxPage'
-import BookRoutePage from './pages/BookRoute/BookRoutePage'
+
+const BookRoutePage = lazy(() => import('./pages/BookRoute/BookRoutePage'))
 
 function App() {
   return (
@@ -19,7 +21,7 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/bookings" element={<ProtectedRoute><BookingsPage /></ProtectedRoute>} />
         <Route path="/inbox" element={<ProtectedRoute><InboxPage /></ProtectedRoute>} />
-        <Route path="/routes" element={<ProtectedRoute><BookRoutePage /></ProtectedRoute>} />
+        <Route path="/routes" element={<ProtectedRoute><Suspense fallback={null}><BookRoutePage /></Suspense></ProtectedRoute>} />
       </Routes>
       <Footer />
     </>

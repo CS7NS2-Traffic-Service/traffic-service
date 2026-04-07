@@ -42,7 +42,7 @@ API Gateway (FastAPI :8000)          services/api-gateway/src/main.py
 
 **API Gateway** — reverse proxy only. No business logic. Reads `SERVICE_<NAME>=http://host:port` env
 vars to route `/api/<name>/...` to downstream services. Everything else is forwarded to the BFF.
-Uses `httpx.AsyncClient` and `StreamingResponse` — headers and body pass through unchanged.
+Uses `httpx.AsyncClient` and `Response` — strips hop-by-hop headers, preserves content-type, returns buffered responses.
 
 **BFF** — serves the compiled React frontend. Mounts `/assets` as a static directory; all other
 paths return `index.html` to support client-side routing. The frontend is compiled into the BFF
