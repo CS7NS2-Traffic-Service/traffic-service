@@ -119,6 +119,20 @@ async def health_ready():
     return {'status': 'ready'}
 
 
+STRIP_REQUEST_HEADERS = {
+    'host',
+    'content-length',
+    'transfer-encoding',
+    'connection',
+}
+STRIP_RESPONSE_HEADERS = {
+    'content-encoding',
+    'transfer-encoding',
+    'content-length',
+    'connection',
+}
+
+
 async def proxy(
     request: Request,
     target: str,
@@ -127,7 +141,11 @@ async def proxy(
     if request.url.query:
         url += f'?{request.url.query}'
 
-    headers = dict(request.headers)
+    headers = {
+        k: v
+        for k, v in request.headers.items()
+        if k.lower() not in STRIP_REQUEST_HEADERS
+    }
     driver_id = getattr(request.state, 'driver_id', None)
     if driver_id:
         headers['x-driver-id'] = driver_id
@@ -140,10 +158,14 @@ async def proxy(
         headers=headers,
         content=await request.body(),
     )
+    resp_headers = {
+        k: v for k, v in resp.headers.items() if k.lower() not in STRIP_RESPONSE_HEADERS
+    }
+    resp_headers['x-correlation-id'] = correlation_id
     return StreamingResponse(
         resp.aiter_bytes(),
         status_code=resp.status_code,
-        headers={**dict(resp.headers), 'x-correlation-id': correlation_id},
+        headers=resp_headers,
     )
 
 
