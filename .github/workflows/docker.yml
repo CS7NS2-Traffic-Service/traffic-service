@@ -64,7 +64,9 @@ jobs:
         with:
           context: ./services/api-gateway
           push: true
-          tags: ghcr.io/cs7ns2-traffic-service/traffic-service/api-gateway:latest
+          tags: |
+            ghcr.io/cs7ns2-traffic-service/traffic-service/api-gateway:latest
+            ghcr.io/cs7ns2-traffic-service/traffic-service/api-gateway:${{ github.sha }}
           platforms: linux/amd64,linux/arm64
 
   build-bff:
@@ -86,7 +88,9 @@ jobs:
         with:
           context: ./services/bff
           push: true
-          tags: ghcr.io/cs7ns2-traffic-service/traffic-service/bff:latest
+          tags: |
+            ghcr.io/cs7ns2-traffic-service/traffic-service/bff:latest
+            ghcr.io/cs7ns2-traffic-service/traffic-service/bff:${{ github.sha }}
           platforms: linux/amd64,linux/arm64
           build-args: |
             VITE_MAPBOX_TOKEN=${{ secrets.MAPBOX_TOKEN }}
@@ -111,7 +115,9 @@ jobs:
         with:
           context: ./services/driver-service
           push: true
-          tags: ghcr.io/cs7ns2-traffic-service/traffic-service/driver-service:latest
+          tags: |
+            ghcr.io/cs7ns2-traffic-service/traffic-service/driver-service:latest
+            ghcr.io/cs7ns2-traffic-service/traffic-service/driver-service:${{ github.sha }}
           platforms: linux/amd64,linux/arm64
 
   build-booking-service:
@@ -133,7 +139,9 @@ jobs:
         with:
           context: ./services/booking-service
           push: true
-          tags: ghcr.io/cs7ns2-traffic-service/traffic-service/booking-service:latest
+          tags: |
+            ghcr.io/cs7ns2-traffic-service/traffic-service/booking-service:latest
+            ghcr.io/cs7ns2-traffic-service/traffic-service/booking-service:${{ github.sha }}
           platforms: linux/amd64,linux/arm64
 
   build-routes-service:
@@ -155,7 +163,9 @@ jobs:
         with:
           context: ./services/routes-service
           push: true
-          tags: ghcr.io/cs7ns2-traffic-service/traffic-service/routes-service:latest
+          tags: |
+            ghcr.io/cs7ns2-traffic-service/traffic-service/routes-service:latest
+            ghcr.io/cs7ns2-traffic-service/traffic-service/routes-service:${{ github.sha }}
           platforms: linux/amd64,linux/arm64
 
   build-conflict-detection:
@@ -177,7 +187,9 @@ jobs:
         with:
           context: ./services/conflict-detection-service
           push: true
-          tags: ghcr.io/cs7ns2-traffic-service/traffic-service/conflict-detection:latest
+          tags: |
+            ghcr.io/cs7ns2-traffic-service/traffic-service/conflict-detection:latest
+            ghcr.io/cs7ns2-traffic-service/traffic-service/conflict-detection:${{ github.sha }}
           platforms: linux/amd64,linux/arm64
 
   build-messaging-service:
@@ -199,7 +211,9 @@ jobs:
         with:
           context: ./services/messaging-service
           push: true
-          tags: ghcr.io/cs7ns2-traffic-service/traffic-service/messaging-service:latest
+          tags: |
+            ghcr.io/cs7ns2-traffic-service/traffic-service/messaging-service:latest
+            ghcr.io/cs7ns2-traffic-service/traffic-service/messaging-service:${{ github.sha }}
           platforms: linux/amd64,linux/arm64
 
   build-db-migrate:
@@ -221,5 +235,35 @@ jobs:
         with:
           context: ./db
           push: true
-          tags: ghcr.io/cs7ns2-traffic-service/traffic-service/db-migrate:latest
+          tags: |
+            ghcr.io/cs7ns2-traffic-service/traffic-service/db-migrate:latest
+            ghcr.io/cs7ns2-traffic-service/traffic-service/db-migrate:${{ github.sha }}
           platforms: linux/amd64,linux/arm64
+
+  deploy:
+    needs:
+      - build-api-gateway
+      - build-bff
+      - build-driver-service
+      - build-booking-service
+      - build-routes-service
+      - build-conflict-detection
+      - build-messaging-service
+      - build-db-migrate
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-kubectl@v3
+      - uses: azure/setup-helm@v3
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-north-1
+      - run: aws eks update-kubeconfig --name traffic-service --region eu-north-1
+      - run: |
+          helm upgrade traffic ./charts \
+            --values charts/values.yaml \
+            -f charts/values-demo.yaml \
+            --set image.tag=${{ github.sha }}
