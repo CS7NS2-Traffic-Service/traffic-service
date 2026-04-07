@@ -26,13 +26,10 @@ async function loginViaApi(page: Page, request: APIRequestContext) {
 test('booked departure time matches the time selected in the picker', async ({ page, request }) => {
   await loginViaApi(page, request);
 
-  await page.goto(`/routes?departure=${DEPARTURE}`);
+  await page.goto(
+    `/routes?originLat=${ORIGIN_LAT}&originLng=${ORIGIN_LNG}&destLat=${DEST_LAT}&destLng=${DEST_LNG}&departure=${DEPARTURE}`,
+  );
   await expect(page).toHaveURL(/\/routes/);
-
-  await page.getByPlaceholder('e.g. 48.2082').fill(ORIGIN_LAT);
-  await page.getByPlaceholder('e.g. 16.3738').fill(ORIGIN_LNG);
-  await page.getByPlaceholder('e.g. 47.0707').fill(DEST_LAT);
-  await page.getByPlaceholder('e.g. 15.4395').fill(DEST_LNG);
 
   await page.getByRole('button', { name: 'Find Route' }).click();
   await expect(page.getByText('Route Found')).toBeVisible({ timeout: 15_000 });
