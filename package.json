@@ -18,6 +18,9 @@
     ],
     "services/conflict-detection-service/tests/**/*.py": [
       "bash -c 'cd services/conflict-detection-service && uv run --with pytest pytest tests/'"
+    ],
+    "services/routes-service/tests/**/*.py": [
+      "bash -c 'cd services/routes-service && uv run --with pytest pytest tests/'"
     ]
   },
   "devDependencies": {

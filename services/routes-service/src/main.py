@@ -1,7 +1,7 @@
-from dependencies import get_db_connection
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from routes import routes
+from infrastructure.dependencies import get_db_connection
+from infrastructure.routes import routes
 from sqlalchemy import text
 
 app = FastAPI()

@@ -1,4 +1,4 @@
-from services.osrm import _extract_steps_with_edges
+from application.use_cases import extract_steps_with_edges as _extract_steps_with_edges
 
 
 def _make_leg(nodes, steps):
@@ -107,4 +107,6 @@ class TestEdgeOverlapMatching:
         edges_b = _extract_steps_with_edges(leg_b)[0]['edge_ids']
 
         overlap = set(edges_a) & set(edges_b)
-        assert len(overlap) == 0, 'Adjacent segments sharing only a node should not overlap'
+        assert len(overlap) == 0, (
+            'Adjacent segments sharing only a node should not overlap'
+        )
