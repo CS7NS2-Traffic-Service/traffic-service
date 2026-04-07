@@ -61,7 +61,7 @@ spec:
             httpGet:
               path: /health/live
               port: {{ .Values.ports.driverService }}
-            initialDelaySeconds: 5
+            initialDelaySeconds: 30
             timeoutSeconds: 5
             successThreshold: 1
             failureThreshold: 3
