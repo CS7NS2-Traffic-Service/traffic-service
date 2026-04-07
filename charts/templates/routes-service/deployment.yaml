@@ -57,7 +57,7 @@ spec:
             httpGet:
               path: /health/live
               port: {{ .Values.ports.routesService }}
-            initialDelaySeconds: 15
+            initialDelaySeconds: 30
             timeoutSeconds: 5
             failureThreshold: 3
             periodSeconds: 10

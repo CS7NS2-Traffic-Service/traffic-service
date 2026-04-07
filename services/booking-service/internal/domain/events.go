@@ -1,9 +1,24 @@
 package domain
 
-import "time"
+import (
+	"context"
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type Event interface {
 	Stream() string
+}
+
+func NewEventEnvelope(ctx context.Context, event Event) EventEnvelope {
+	return EventEnvelope{
+		EventID:       uuid.NewString(),
+		CorrelationID: CorrelationIDFromContext(ctx),
+		EventType:     event.Stream(),
+		CreatedAt:     time.Now().UTC(),
+		Data:          event,
+	}
 }
 
 type EventEnvelope struct {
