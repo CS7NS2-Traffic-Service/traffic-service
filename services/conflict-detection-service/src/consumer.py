@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import redis
 from database import SessionLocal
-from events import publish_event
+from models.outbox_event import OutboxEvent
 from models.processed_event import ProcessedEvent
 from models.route import Route
 from services.conflict import assess_and_reserve, delete_reservations
@@ -74,7 +74,8 @@ def handle_booking_created(
     event_id: str,
     consumer: str,
     stream: str,
-) -> dict | None:
+    correlation_id: str,
+) -> None:
     booking_id = data['booking_id']
     route_id = data['route_id']
     departure_time = datetime.fromisoformat(
@@ -84,27 +85,29 @@ def handle_booking_created(
     route = db.query(Route).filter(Route.route_id == route_id).first()
     if route is None:
         logger.warning('Route %s not found', route_id)
-        event_payload = {
+        event_data = {
             'booking_id': booking_id,
             'route_id': route_id,
             'segments_available': False,
         }
         _mark_processed(db, event_id, consumer, stream)
+        _enqueue_outbox(db, 'route.assessed', event_data, correlation_id)
         db.commit()
-        return event_payload
+        return
 
     segment_ids = [str(sid) for sid in (route.segment_ids or [])]
     duration = route.estimated_duration or 3600
 
     if not segment_ids:
-        event_payload = {
+        event_data = {
             'booking_id': booking_id,
             'route_id': route_id,
             'segments_available': True,
         }
         _mark_processed(db, event_id, consumer, stream)
+        _enqueue_outbox(db, 'route.assessed', event_data, correlation_id)
         db.commit()
-        return event_payload
+        return
 
     result = assess_and_reserve(
         booking_id=booking_id,
@@ -115,14 +118,14 @@ def handle_booking_created(
         db=db,
     )
 
-    event_payload = {
+    event_data = {
         'booking_id': result.booking_id,
         'route_id': result.route_id,
         'segments_available': result.segments_available,
     }
     _mark_processed(db, event_id, consumer, stream)
+    _enqueue_outbox(db, 'route.assessed', event_data, correlation_id)
     db.commit()
-    return event_payload
 
 
 def handle_booking_updated(
@@ -156,6 +159,17 @@ def _mark_processed(db, event_id: str, consumer: str, stream: str) -> None:
             stream_name=stream,
         )
     )
+
+
+def _enqueue_outbox(db, stream: str, data: dict, correlation_id: str) -> None:
+    envelope = {
+        'event_id': str(uuid4()),
+        'correlation_id': correlation_id,
+        'event_type': stream,
+        'created_at': datetime.now(UTC).isoformat(),
+        'data': data,
+    }
+    db.add(OutboxEvent(stream=stream, payload=envelope))
 
 
 def process_with_retry(handler, **kwargs):
@@ -195,24 +209,19 @@ def run_consumer(stop_event: Event | None = None) -> None:
                     correlation_id = envelope.get('correlation_id', str(uuid4()))
 
                     try:
-                        event_payload = process_with_retry(
+                        process_with_retry(
                             handle_booking_created,
                             data=envelope['data'],
                             event_id=envelope['event_id'],
                             consumer=CREATED_CONSUMER,
                             stream=CREATED_STREAM,
+                            correlation_id=correlation_id,
                         )
                     except Exception as exc:
                         publish_to_dlq(CREATED_STREAM, msg_id, fields, exc)
                         redis_client.xack(CREATED_STREAM, GROUP, msg_id)
                         continue
 
-                    if event_payload is not None:
-                        publish_event(
-                            'route.assessed',
-                            event_payload,
-                            correlation_id=correlation_id,
-                        )
                     redis_client.xack(CREATED_STREAM, GROUP, msg_id)
         except Exception:
             logger.exception('Consumer error')
