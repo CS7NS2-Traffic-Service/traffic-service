@@ -89,6 +89,33 @@ Migration scripts are manual — write `upgrade()` and `downgrade()` functions i
 Prefer small, focused components that are easy to manage. Extract logical pieces into subcomponents
 rather than building large monolithic ones.
 
+**Vite 8 / Rolldown chunking** — Vite 8 uses Rolldown which splits vendor deps into many small chunks
+by default. Behind a reverse proxy this causes too many concurrent requests and page freezes. Keep
+`manualChunks` in `vite.config.ts` to consolidate all `node_modules` into a single vendor chunk:
+
+```ts
+build: {
+  rollupOptions: {
+    output: {
+      manualChunks(id) {
+        if (id.includes('node_modules')) return 'vendor'
+      },
+    },
+  },
+},
+```
+
+**Lazy-load heavy routes** — `BookRoutePage` imports mapbox-gl (~2MB vendor bundle). Keep it
+lazy-loaded in `App.tsx` so it doesn't block initial page load:
+
+```tsx
+const BookRoutePage = lazy(() => import('./pages/BookRoute/BookRoutePage'))
+```
+
+**Browser extensions on deployed URLs** — Grammarly's MutationObserver fights with React's DOM
+reconciliation on non-localhost URLs (extensions are disabled on localhost). Fix: add
+`data-gramm="false"` to `<div id="root">` in `index.html`.
+
 ## Cross-Service Foreign Keys
 
 Each service has its own `declarative_base()`. SQLAlchemy cannot resolve `ForeignKey('other_table.id')`
