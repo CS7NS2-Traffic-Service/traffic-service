@@ -1,5 +1,6 @@
 apiGateway:
   serviceType: LoadBalancer
+  loadBalancerPort: 80
 
 imagePullSecret: ghcr-secret
 
