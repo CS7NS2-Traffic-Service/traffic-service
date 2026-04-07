@@ -28,7 +28,7 @@ spec:
       {{- end }}
       containers:
         - name: osrm
-          image: {{ .Values.image.registry }}/osrm-ireland:{{ .Values.image.tag }}
+          image: {{ .Values.image.registry }}/osrm-ireland:latest
           imagePullPolicy: IfNotPresent
           resources:
             requests:
