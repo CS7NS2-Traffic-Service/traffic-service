@@ -1,4 +1,4 @@
-from database import BaseDBModel
+from infrastructure.database import BaseDBModel
 from sqlalchemy import DateTime, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import mapped_column

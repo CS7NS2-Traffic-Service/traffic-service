@@ -1,18 +1,25 @@
-from dependencies import get_db_connection
+from application.use_cases import GetDriverProfileUseCase
 from fastapi import APIRouter, Depends, Header, HTTPException
-from schemas import DriverResponse
-from services.auth import get_driver_profile
+from infrastructure.dependencies import get_db_connection
+from infrastructure.http.schemas import DriverResponse
+from infrastructure.repositories.driver_repository import PostgresDriverRepository
 from sqlalchemy.orm import Session
 
 router = APIRouter()
 
 
+def get_profile_use_case(
+    db: Session = Depends(get_db_connection),
+) -> GetDriverProfileUseCase:
+    return GetDriverProfileUseCase(PostgresDriverRepository(db))
+
+
 @router.get('/me', status_code=200)
 def me(
     x_driver_id: str = Header(...),
-    db: Session = Depends(get_db_connection),
+    use_case: GetDriverProfileUseCase = Depends(get_profile_use_case),
 ):
-    driver = get_driver_profile(x_driver_id, db)
+    driver = use_case.execute(x_driver_id)
     if driver is None:
         raise HTTPException(status_code=404, detail='Driver not found')
     return DriverResponse(

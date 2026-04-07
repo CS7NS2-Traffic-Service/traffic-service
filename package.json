@@ -12,6 +12,12 @@
     "services/*/src/**/*.py": [
       "ruff check --fix --config ruff.toml",
       "ruff format --config ruff.toml"
+    ],
+    "services/driver-service/tests/**/*.py": [
+      "bash -c 'cd services/driver-service && uv run --with pytest pytest tests/'"
+    ],
+    "services/conflict-detection-service/tests/**/*.py": [
+      "bash -c 'cd services/conflict-detection-service && uv run --with pytest pytest tests/'"
     ]
   },
   "devDependencies": {

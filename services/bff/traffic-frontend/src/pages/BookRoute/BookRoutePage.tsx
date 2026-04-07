@@ -2,9 +2,9 @@ import { useCallback, useMemo, useRef } from "react"
 import { useSearchParams } from "react-router-dom"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { DateTimePicker } from "@/components/ui/date-time-picker"
+import { LocationSearch } from "@/components/ui/LocationSearch"
 import { findRoute, getRouteSegments, getSegmentUtilization } from "@/api/routes"
 import RouteMap from "@/components/RouteMap"
 import RouteResultCard from "./RouteResultCard"
@@ -17,6 +17,8 @@ function BookRoutePage() {
   const originLng = searchParams.get("originLng") ?? ""
   const destLat = searchParams.get("destLat") ?? ""
   const destLng = searchParams.get("destLng") ?? ""
+  const originName = searchParams.get("originName") ?? (originLat && originLng ? `${parseFloat(originLat).toFixed(4)}, ${parseFloat(originLng).toFixed(4)}` : "")
+  const destName = searchParams.get("destName") ?? (destLat && destLng ? `${parseFloat(destLat).toFixed(4)}, ${parseFloat(destLng).toFixed(4)}` : "")
   const fiveMinutesMs = 5 * 60 * 1000
   const roundTo5 = useCallback((d: Date) => {
     return new Date(Math.round(d.getTime() / fiveMinutesMs) * fiveMinutesMs)
@@ -31,12 +33,45 @@ function BookRoutePage() {
   const departureTimeIso = useMemo(() => departureDate.toISOString(), [departureDate])
   const clickCountRef = useRef(0)
 
-  const setParam = (key: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
+  const handleOriginSelect = useCallback((name: string, lng: number, lat: number) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
-      next.set(key, e.target.value)
+      next.set("originLat", lat.toFixed(6))
+      next.set("originLng", lng.toFixed(6))
+      next.set("originName", name)
       return next
     }, { replace: true })
+  }, [setSearchParams])
+
+  const handleOriginClear = useCallback(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete("originLat")
+      next.delete("originLng")
+      next.delete("originName")
+      return next
+    }, { replace: true })
+  }, [setSearchParams])
+
+  const handleDestSelect = useCallback((name: string, lng: number, lat: number) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.set("destLat", lat.toFixed(6))
+      next.set("destLng", lng.toFixed(6))
+      next.set("destName", name)
+      return next
+    }, { replace: true })
+  }, [setSearchParams])
+
+  const handleDestClear = useCallback(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete("destLat")
+      next.delete("destLng")
+      next.delete("destName")
+      return next
+    }, { replace: true })
+  }, [setSearchParams])
 
   const handleDepartureChange = useCallback((date: Date) => {
     const rounded = roundTo5(date)
@@ -102,11 +137,13 @@ function BookRoutePage() {
   }, [utilizationData])
 
   const handleMapClick = useCallback((lngLat: Coord) => {
+    const coordLabel = `${lngLat.lat.toFixed(4)}, ${lngLat.lng.toFixed(4)}`
     if (clickCountRef.current === 0) {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev)
         next.set("originLat", lngLat.lat.toFixed(6))
         next.set("originLng", lngLat.lng.toFixed(6))
+        next.set("originName", coordLabel)
         return next
       }, { replace: true })
       clickCountRef.current = 1
@@ -115,6 +152,7 @@ function BookRoutePage() {
         const newParams = new URLSearchParams(prev)
         newParams.set("destLat", lngLat.lat.toFixed(6))
         newParams.set("destLng", lngLat.lng.toFixed(6))
+        newParams.set("destName", coordLabel)
         return newParams
       }, { replace: true })
       clickCountRef.current = 0
@@ -127,15 +165,6 @@ function BookRoutePage() {
   }
 
   const isValid = originLat && originLng && destLat && destLng
-  const originLatValue = parseFloat(originLat)
-  const originLngValue = parseFloat(originLng)
-  const destLatValue = parseFloat(destLat)
-  const destLngValue = parseFloat(destLng)
-  const outOfRange =
-    (!isNaN(originLatValue) && (originLatValue < -90 || originLatValue > 90)) ||
-    (!isNaN(destLatValue) && (destLatValue < -90 || destLatValue > 90)) ||
-    (!isNaN(originLngValue) && (originLngValue < -180 || originLngValue > 180)) ||
-    (!isNaN(destLngValue) && (destLngValue < -180 || destLngValue > 180))
 
   const mapSegments = segments?.map((seg) => ({
     segment_id: seg.segment_id,
@@ -155,48 +184,20 @@ function BookRoutePage() {
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
                 {error && <p className="text-sm text-red-500">{error.message}</p>}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium">Origin Latitude</label>
-                    <Input
-                      type="number"
-                      step="any"
-                      placeholder="e.g. 48.2082"
-                      value={originLat}
-                      onChange={setParam("originLat")}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium">Origin Longitude</label>
-                    <Input
-                      type="number"
-                      step="any"
-                      placeholder="e.g. 16.3738"
-                      value={originLng}
-                      onChange={setParam("originLng")}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium">Destination Latitude</label>
-                    <Input
-                      type="number"
-                      step="any"
-                      placeholder="e.g. 47.0707"
-                      value={destLat}
-                      onChange={setParam("destLat")}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium">Destination Longitude</label>
-                    <Input
-                      type="number"
-                      step="any"
-                      placeholder="e.g. 15.4395"
-                      value={destLng}
-                      onChange={setParam("destLng")}
-                    />
-                  </div>
-                </div>
+                <LocationSearch
+                  label="Origin"
+                  placeholder="e.g. Dublin Airport"
+                  displayValue={originName}
+                  onSelect={handleOriginSelect}
+                  onClear={handleOriginClear}
+                />
+                <LocationSearch
+                  label="Destination"
+                  placeholder="e.g. Cork City"
+                  displayValue={destName}
+                  onSelect={handleDestSelect}
+                  onClear={handleDestClear}
+                />
                 <div className="space-y-1">
                   <label className="text-sm font-medium">Departure Time</label>
                   <DateTimePicker
@@ -205,14 +206,9 @@ function BookRoutePage() {
                     aria-label="Departure time"
                   />
                 </div>
-                <Button type="submit" disabled={isPending || !isValid || outOfRange}>
+                <Button type="submit" disabled={isPending || !isValid}>
                   {isPending ? "Searching..." : "Find Route"}
                 </Button>
-                {outOfRange && (
-                  <p className="text-xs text-red-500">
-                    Latitude must be between -90 and 90, longitude between -180 and 180.
-                  </p>
-                )}
                 <p className="text-xs text-muted-foreground">
                   Tip: click the map to set origin (1st click) and destination (2nd click)
                 </p>

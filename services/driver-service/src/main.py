@@ -1,24 +1,25 @@
-from contextlib import asynccontextmanager
 import os
+from contextlib import asynccontextmanager
 
-from dependencies import get_db_connection
+from application.use_cases import RegisterDriverUseCase
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from routes import auth, drivers
-from services.auth import register
+from infrastructure.dependencies import get_db_connection
+from infrastructure.repositories.driver_repository import PostgresDriverRepository
+from infrastructure.routes import auth, drivers
 from sqlalchemy import text
 
 
 def seed_test_driver():
     db = next(get_db_connection())
-    register(
+    use_case = RegisterDriverUseCase(PostgresDriverRepository(db))
+    use_case.execute(
         name='Test Driver',
         email='test@example.com',
         password='password123',
         license_number='TEST123',
         vehicle_type='CAR',
         region='Dublin',
-        db=db,
     )
 
 
