@@ -113,8 +113,8 @@ const BookRoutePage = lazy(() => import('./pages/BookRoute/BookRoutePage'))
 ```
 
 **Browser extensions on deployed URLs** — Grammarly's MutationObserver fights with React's DOM
-reconciliation on non-localhost URLs (extensions are disabled on localhost). Fix: add
-`data-gramm="false"` to `<div id="root">` in `index.html`.
+reconciliation on non-localhost URLs (extensions are disabled on localhost). No website-side fix —
+disable Grammarly for the deployed domain via the extension settings, or use incognito for demos.
 
 ## Cross-Service Foreign Keys
 
