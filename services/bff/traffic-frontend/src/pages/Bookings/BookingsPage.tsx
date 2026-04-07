@@ -1,7 +1,7 @@
 import { useState } from "react"
-import { formatUTCToLocal, formatUTCToLocalTime } from "@/lib/datetime"
+import { formatUTCToLocal, formatUTCToLocalTime, shortId } from "@/lib/datetime"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { useSearchParams } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/StatusBadge"
@@ -19,6 +19,14 @@ const STAT_COLORS: Record<string, string> = {
   Approved: "text-green-600",
   Rejected: "text-red-600",
   "Cancelled / Expired": "text-gray-500",
+}
+
+const STATUS_DESCRIPTIONS: Record<string, string> = {
+  PENDING: "Awaiting route assessment — usually instant",
+  APPROVED: "Road capacity reserved for your departure window",
+  REJECTED: "No capacity available on this route",
+  CANCELLED: "Booking was cancelled",
+  EXPIRED: "Departure time has passed",
 }
 
 function StatCard({ label, count, active, onClick }: {
@@ -60,11 +68,14 @@ function BookingCard({ booking, onCancel, isCancelling, expanded, onToggle }: {
       <CardContent className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-sm font-medium">Route: {booking.route_id}</p>
+            <p className="text-sm font-medium">Route {shortId(booking.route_id)}</p>
             <p className="text-sm text-muted-foreground">
               Departure: {formatUTCToLocal(booking.departure_time)}
             </p>
             <StatusBadge status={booking.status} />
+            {STATUS_DESCRIPTIONS[booking.status] && (
+              <p className="text-xs text-muted-foreground">{STATUS_DESCRIPTIONS[booking.status]}</p>
+            )}
           </div>
           {canCancel && (
             <Button
@@ -90,7 +101,7 @@ function BookingCard({ booking, onCancel, isCancelling, expanded, onToggle }: {
               <div className="space-y-1">
                 {reservations.map((r) => (
                   <div key={r.reservation_id} className="flex justify-between text-sm text-muted-foreground">
-                    <span className="font-mono truncate max-w-48">{r.segment_id}</span>
+                    <span className="text-muted-foreground">{shortId(r.segment_id)}</span>
                     <span>
                       {formatUTCToLocalTime(r.time_window_start)} – {formatUTCToLocalTime(r.time_window_end)}
                     </span>
@@ -170,7 +181,12 @@ function BookingsPage() {
           your selected departure window.
         </p>
         {filteredBookings && filteredBookings.length === 0 && (
-          <p className="text-sm text-muted-foreground">No bookings yet.</p>
+          <div className="rounded-lg border border-dashed p-8 text-center">
+            <p className="text-sm text-muted-foreground">No bookings yet.</p>
+            <Link to="/routes" className="mt-1 inline-block text-sm font-medium text-primary hover:underline">
+              Book a route →
+            </Link>
+          </div>
         )}
         {filteredBookings?.map((booking) => (
           <BookingCard

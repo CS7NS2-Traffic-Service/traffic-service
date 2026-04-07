@@ -183,7 +183,11 @@ function BookRoutePage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
-                {error && <p className="text-sm text-red-500">{error.message}</p>}
+                {error && (
+                  <p className="text-sm text-muted-foreground">
+                    No routes found between these two points. Try adjusting your origin or destination.
+                  </p>
+                )}
                 <LocationSearch
                   label="Origin"
                   placeholder="e.g. Dublin Airport"

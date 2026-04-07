@@ -8,6 +8,12 @@ import type { RegisterDriverDto } from "@/api/auth"
 import { useDriverStore } from "@/stores/driverStore"
 
 const VEHICLE_TYPES = ["CAR", "MOTORCYCLE", "TRUCK", "HGV"] as const
+const VEHICLE_LABELS: Record<string, string> = {
+  CAR: "Car",
+  MOTORCYCLE: "Motorcycle",
+  TRUCK: "Truck",
+  HGV: "Heavy Goods Vehicle",
+}
 const REGIONS = ["Ireland", "Northern Ireland"] as const
 
 function RegisterForm() {
@@ -88,7 +94,7 @@ function RegisterForm() {
             </option>
             {VEHICLE_TYPES.map((type) => (
               <option key={type} value={type}>
-                {type.charAt(0) + type.slice(1).toLowerCase()}
+                {VEHICLE_LABELS[type]}
               </option>
             ))}
           </select>

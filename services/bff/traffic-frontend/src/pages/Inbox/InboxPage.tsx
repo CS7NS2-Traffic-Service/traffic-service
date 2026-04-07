@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { fetchMessages, markAsRead, type Message } from "@/api/messages"
+import { shortId } from "@/lib/datetime"
 
 function MessageItem({ message, onMarkRead }: {
   message: Message
@@ -22,7 +23,7 @@ function MessageItem({ message, onMarkRead }: {
             {message.content}
           </p>
           <p className="text-xs text-muted-foreground">
-            Booking: {message.booking_id}
+            Ref: {shortId(message.booking_id)}
           </p>
         </div>
         <p className="shrink-0 text-xs text-muted-foreground">
@@ -66,7 +67,7 @@ function InboxPage() {
           {isLoading && <p className="text-sm text-muted-foreground">Loading messages...</p>}
           {error && <p className="text-sm text-red-500">{(error as Error).message}</p>}
           {messages && messages.length === 0 && (
-            <p className="text-sm text-muted-foreground">No messages.</p>
+            <p className="text-sm text-muted-foreground">Your inbox is empty.</p>
           )}
           {messages?.map((message) => (
             <MessageItem

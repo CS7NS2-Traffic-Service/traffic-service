@@ -3,6 +3,7 @@ import type { RouteResult, Segment } from "@/api/routes"
 import { StatusBadge } from "@/components/StatusBadge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { shortId, formatDuration } from "@/lib/datetime"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 
@@ -34,9 +35,7 @@ function RouteResultCard({
     },
   })
 
-  const durationMinutes = route.estimated_duration
-    ? Math.round(route.estimated_duration / 60)
-    : null
+  const duration = route.estimated_duration ? formatDuration(route.estimated_duration) : null
 
   function handleBook() {
     const departure = new Date(departureTime).toISOString()
@@ -56,7 +55,7 @@ function RouteResultCard({
         <CardTitle>Route Found</CardTitle>
         {bookingResult ? (
           <div className="flex items-center gap-2 text-sm text-green-700">
-            <p>Booking created: {bookingResult.booking_id}</p>
+            <p>Booking created: {shortId(bookingResult.booking_id)}</p>
             <StatusBadge status={bookingResult.status} />
           </div>
         ) : (
@@ -70,11 +69,11 @@ function RouteResultCard({
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="grid grid-cols-2 gap-2 text-sm">
-          <p><span className="font-medium">Route ID:</span> {route.route_id}</p>
+          <p><span className="font-medium">Route ID:</span> {shortId(route.route_id)}</p>
           <p><span className="font-medium">Origin:</span> {route.origin}</p>
           <p><span className="font-medium">Destination:</span> {route.destination}</p>
-          {durationMinutes !== null && (
-            <p><span className="font-medium">Est. Duration:</span> {durationMinutes} min</p>
+          {duration !== null && (
+            <p><span className="font-medium">Est. Duration:</span> {duration}</p>
           )}
         </div>
 
