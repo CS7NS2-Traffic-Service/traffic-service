@@ -3,6 +3,13 @@ export function ensureUTCSuffix(iso: string): string {
   return iso + "Z"
 }
 
+export function parseLocalDateTime(iso: string): Date {
+  const [datePart, timePart = "00:00"] = iso.split("T")
+  const [year, month, day] = datePart.split("-").map(Number)
+  const [hours, minutes] = timePart.split(":").map(Number)
+  return new Date(year, (month || 1) - 1, day || 1, hours || 0, minutes || 0)
+}
+
 export function formatUTCToLocal(iso: string): string {
   return new Date(ensureUTCSuffix(iso)).toLocaleString()
 }

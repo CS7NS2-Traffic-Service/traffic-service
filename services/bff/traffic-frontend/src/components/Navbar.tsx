@@ -36,7 +36,7 @@ function NavItem({ to, label, badge }: { to: string; label: string; badge?: numb
 function Navbar() {
   const navigate = useNavigate()
   const { token, driver, logout } = useDriverStore()
-  const firstName = driver?.name?.split(' ')[0] ?? 'Account'
+  const driverLabel = driver?.name ?? 'Account'
 
   const { data: messages } = useQuery({
     queryKey: ['messages'],
@@ -71,7 +71,7 @@ function Navbar() {
           {token ? (
             <DropdownMenu>
               <DropdownMenuTrigger className="inline-flex cursor-pointer items-center gap-1 rounded-full border px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                {firstName}
+                {driverLabel}
                 <ChevronDown className="h-4 w-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">

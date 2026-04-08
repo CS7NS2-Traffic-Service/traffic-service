@@ -82,7 +82,9 @@ function BookingCard({ booking, onCancel, isCancelling, expanded, onToggle }: {
               <p className="text-sm font-semibold">Route {shortId(booking.route_id)}</p>
               <StatusBadge status={booking.status} />
             </div>
-            <p className="text-sm text-muted-foreground">{formatUTCToLocal(booking.departure_time)}</p>
+            <p className="text-sm text-muted-foreground">
+              Departure: {formatUTCToLocal(booking.departure_time)}
+            </p>
             <p className="text-xs text-muted-foreground">
               {STATUS_DESCRIPTIONS[booking.status] ?? "Click to view reservation details"}
             </p>

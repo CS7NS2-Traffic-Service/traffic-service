@@ -8,7 +8,7 @@ import { LocationSearch } from "@/components/ui/LocationSearch"
 import { findRoute, getRouteSegments, getSegmentUtilization } from "@/api/routes"
 import RouteMap from "@/components/RouteMap"
 import RouteResultCard from "./RouteResultCard"
-import { ensureUTCSuffix } from "@/lib/datetime"
+import { ensureUTCSuffix, parseLocalDateTime } from "@/lib/datetime"
 
 type Coord = { lng: number; lat: number }
 
@@ -27,7 +27,11 @@ function BookRoutePage() {
   const defaultDeparture = useMemo(() => roundTo5(new Date()), [roundTo5])
   const rawDeparture = searchParams.get("departure")
   const departureDate = useMemo(() => {
-    const candidate = rawDeparture ? new Date(ensureUTCSuffix(rawDeparture)) : defaultDeparture
+    const candidate = rawDeparture
+      ? /(?:Z|[+-]\d{2}:\d{2})$/.test(rawDeparture)
+        ? new Date(ensureUTCSuffix(rawDeparture))
+        : parseLocalDateTime(rawDeparture)
+      : defaultDeparture
     if (isNaN(candidate.getTime())) return defaultDeparture
     return roundTo5(candidate)
   }, [rawDeparture, defaultDeparture, roundTo5])
@@ -103,6 +107,12 @@ function BookRoutePage() {
         parseFloat(destLat),
         parseFloat(destLng),
       ),
+    retry: (failureCount, err) => {
+      if (!(err instanceof Error)) return failureCount < 2
+      if (err.message.includes("No route found")) return false
+      return failureCount < 2
+    },
+    retryDelay: (attempt) => attempt * 750,
   })
 
   const hasSegments = (route?.segment_ids?.length ?? 0) > 0
@@ -191,7 +201,9 @@ function BookRoutePage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 {error && (
                   <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                    No routes found between these two points. Try adjusting your origin or destination.
+                    {error.message.includes("No route found")
+                      ? "No routes found between these two points. Try adjusting your origin or destination."
+                      : error.message}
                   </p>
                 )}
                 <LocationSearch

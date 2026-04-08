@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "playwright test",
-    "test:headed": "playwright test --headed",
+    "test": "TZ=Europe/Dublin playwright test",
+    "test:headed": "TZ=Europe/Dublin playwright test --headed",
     "report": "playwright show-report"
   },
   "keywords": [],
