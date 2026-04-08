@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback, type RefObject } from "react"
 import { Map, Marker, GeoJSONSource, NavigationControl, MapMouseEvent, LngLatBounds } from "mapbox-gl"
 import mapboxgl from 'mapbox-gl'
+import { cn } from "@/lib/utils"
 
 type SegmentData = {
   segment_id: string
@@ -20,6 +21,7 @@ type Props = {
   origin?: Coord | null
   destination?: Coord | null
   onMapClick?: (lngLat: Coord) => void
+  className?: string
 }
 
 const DUBLIN_CENTER: [number, number] = [-6.26, 53.35]
@@ -40,7 +42,7 @@ function segmentCapacityColor(reserved: number, capacity: number): string {
   return SEGMENT_AVAILABLE_COLOR
 }
 
-function RouteMap({ geometry, segments, origin, destination, onMapClick }: Props) {
+function RouteMap({ geometry, segments, origin, destination, onMapClick, className }: Props) {
   const mapRef = useRef<Map | null>(null)
   const markersRef = useRef<Marker[]>([])
   const popupRef = useRef<mapboxgl.Popup | null>(null)
@@ -141,7 +143,7 @@ function RouteMap({ geometry, segments, origin, destination, onMapClick }: Props
   return (
     <div
       ref={containerRef}
-      className="h-[400px] w-full rounded-lg border"
+      className={cn("h-[400px] w-full rounded-lg border", className)}
       style={{ minHeight: 400 }}
     />
   )
