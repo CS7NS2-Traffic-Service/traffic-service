@@ -8,6 +8,7 @@ import { LocationSearch } from "@/components/ui/LocationSearch"
 import { findRoute, getRouteSegments, getSegmentUtilization } from "@/api/routes"
 import RouteMap from "@/components/RouteMap"
 import RouteResultCard from "./RouteResultCard"
+import { ensureUTCSuffix } from "@/lib/datetime"
 
 type Coord = { lng: number; lat: number }
 
@@ -26,7 +27,7 @@ function BookRoutePage() {
   const defaultDeparture = useMemo(() => roundTo5(new Date()), [roundTo5])
   const rawDeparture = searchParams.get("departure")
   const departureDate = useMemo(() => {
-    const candidate = rawDeparture ? new Date(rawDeparture) : defaultDeparture
+    const candidate = rawDeparture ? new Date(ensureUTCSuffix(rawDeparture)) : defaultDeparture
     if (isNaN(candidate.getTime())) return defaultDeparture
     return roundTo5(candidate)
   }, [rawDeparture, defaultDeparture, roundTo5])
@@ -77,7 +78,7 @@ function BookRoutePage() {
     const rounded = roundTo5(date)
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
-      next.set("departure", rounded.toISOString().slice(0, 16))
+      next.set("departure", rounded.toISOString())
       return next
     }, { replace: true })
   }, [roundTo5, setSearchParams])
