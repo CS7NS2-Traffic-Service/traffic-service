@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from 'react-router-dom'
+import { Link, NavLink as RouterNavLink, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -10,31 +10,33 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useDriverStore } from '@/stores/driverStore'
 import { fetchMessages } from '@/api/messages'
+import { cn } from '@/lib/utils'
 
-function NavLink({ to, label, badge }: { to: string; label: string; badge?: number }) {
-  const navigate = useNavigate()
-  const { pathname } = useLocation()
-  const isActive = pathname === to
-
+function NavItem({ to, label, badge }: { to: string; label: string; badge?: number }) {
   return (
-    <Button
-      variant="ghost"
-      className={isActive ? 'bg-muted' : ''}
-      onClick={() => navigate(to)}
+    <RouterNavLink
+      to={to}
+      className={({ isActive }) =>
+        cn(
+          'inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+          isActive && 'bg-muted text-foreground'
+        )
+      }
     >
-      {label}
+      <span>{label}</span>
       {badge !== undefined && badge > 0 && (
-        <span className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground">
+        <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/10 px-1 text-[10px] font-medium text-primary">
           {badge}
         </span>
       )}
-    </Button>
+    </RouterNavLink>
   )
 }
 
 function Navbar() {
   const navigate = useNavigate()
   const { token, driver, logout } = useDriverStore()
+  const firstName = driver?.name?.split(' ')[0] ?? 'Account'
 
   const { data: messages } = useQuery({
     queryKey: ['messages'],
@@ -51,25 +53,25 @@ function Navbar() {
   }
 
   return (
-    <nav className="border-b bg-background">
-      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" className="text-base font-semibold" onClick={() => navigate('/')}>
+    <nav className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="mx-auto flex min-h-16 max-w-5xl items-center justify-between gap-4 px-4 py-2">
+        <div className="flex items-center gap-4">
+          <Link to="/" className="text-base font-semibold tracking-tight">
             Traffic Service
-          </Button>
+          </Link>
           {token && (
-            <>
-              <NavLink to="/routes" label="Book Route" />
-              <NavLink to="/bookings" label="Bookings" />
-              <NavLink to="/inbox" label="Inbox" badge={unreadCount} />
-            </>
+            <div className="flex items-center gap-1">
+              <NavItem to="/routes" label="Book Route" />
+              <NavItem to="/bookings" label="Bookings" />
+              <NavItem to="/inbox" label="Inbox" badge={unreadCount} />
+            </div>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           {token ? (
             <DropdownMenu>
-              <DropdownMenuTrigger className="inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer">
-                {driver?.name}
+              <DropdownMenuTrigger className="inline-flex cursor-pointer items-center gap-1 rounded-full border px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                {firstName}
                 <ChevronDown className="h-4 w-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
