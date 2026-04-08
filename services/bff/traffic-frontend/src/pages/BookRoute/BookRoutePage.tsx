@@ -171,8 +171,11 @@ function BookRoutePage() {
 
   const mapSegments = segments?.map((seg) => ({
     segment_id: seg.segment_id,
+    name: seg.name,
+    region: seg.region,
     coordinates: seg.coordinates,
     capacity: seg.capacity,
+    reserved: utilization[seg.segment_id] ?? 0,
     utilization: (utilization[seg.segment_id] ?? 0) / (seg.capacity || 1),
   }))
 
