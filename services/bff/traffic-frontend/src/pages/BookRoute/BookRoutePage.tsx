@@ -1,13 +1,14 @@
 import { useCallback, useMemo, useRef } from "react"
 import { useSearchParams } from "react-router-dom"
 import { useMutation, useQuery } from "@tanstack/react-query"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DateTimePicker } from "@/components/ui/date-time-picker"
 import { LocationSearch } from "@/components/ui/LocationSearch"
 import { findRoute, getRouteSegments, getSegmentUtilization } from "@/api/routes"
 import RouteMap from "@/components/RouteMap"
 import RouteResultCard from "./RouteResultCard"
+import { ensureUTCSuffix } from "@/lib/datetime"
 
 type Coord = { lng: number; lat: number }
 
@@ -26,7 +27,7 @@ function BookRoutePage() {
   const defaultDeparture = useMemo(() => roundTo5(new Date()), [roundTo5])
   const rawDeparture = searchParams.get("departure")
   const departureDate = useMemo(() => {
-    const candidate = rawDeparture ? new Date(rawDeparture) : defaultDeparture
+    const candidate = rawDeparture ? new Date(ensureUTCSuffix(rawDeparture)) : defaultDeparture
     if (isNaN(candidate.getTime())) return defaultDeparture
     return roundTo5(candidate)
   }, [rawDeparture, defaultDeparture, roundTo5])
@@ -77,7 +78,7 @@ function BookRoutePage() {
     const rounded = roundTo5(date)
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
-      next.set("departure", rounded.toISOString().slice(0, 16))
+      next.set("departure", rounded.toISOString())
       return next
     }, { replace: true })
   }, [roundTo5, setSearchParams])
@@ -170,23 +171,26 @@ function BookRoutePage() {
 
   const mapSegments = segments?.map((seg) => ({
     segment_id: seg.segment_id,
+    name: seg.name,
+    region: seg.region,
     coordinates: seg.coordinates,
     capacity: seg.capacity,
+    reserved: utilization[seg.segment_id] ?? 0,
     utilization: (utilization[seg.segment_id] ?? 0) / (seg.capacity || 1),
   }))
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div className="mx-auto max-w-7xl px-4 py-6">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[400px_minmax(0,1fr)]">
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Find a Route</CardTitle>
-            </CardHeader>
+          <Card className="shadow-sm">
             <CardContent>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Choose locations and departure time, or click the map to set points.
+              </p>
               <form onSubmit={handleSubmit} className="space-y-4">
                 {error && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                     No routes found between these two points. Try adjusting your origin or destination.
                   </p>
                 )}
@@ -212,12 +216,9 @@ function BookRoutePage() {
                     aria-label="Departure time"
                   />
                 </div>
-                <Button type="submit" disabled={isPending || !isValid}>
+                <Button type="submit" disabled={isPending || !isValid} className="w-full">
                   {isPending ? "Searching..." : "Find Route"}
                 </Button>
-                <p className="text-xs text-muted-foreground">
-                  Tip: click the map to set origin (1st click) and destination (2nd click)
-                </p>
               </form>
             </CardContent>
           </Card>
@@ -225,13 +226,14 @@ function BookRoutePage() {
           {route && <RouteResultCard route={route} segments={segments} utilization={utilization} departureTime={departureTimeIso} />}
         </div>
 
-        <div className="lg:sticky lg:top-8 lg:self-start">
+        <div className="lg:sticky lg:top-6 lg:self-start">
           <RouteMap
             geometry={route?.geometry as GeoJSON.Geometry | undefined}
             segments={mapSegments}
             origin={originCoord}
             destination={destCoord}
             onMapClick={handleMapClick}
+            className="h-[calc(100vh-9rem)] min-h-[360px] max-h-[520px] rounded-2xl shadow-sm"
           />
         </div>
       </div>
