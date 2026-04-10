@@ -1,7 +1,6 @@
+from database import BaseDBModel
 from sqlalchemy import DateTime, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
-
-from database import BaseDBModel
 
 
 class ProcessedEvent(BaseDBModel):

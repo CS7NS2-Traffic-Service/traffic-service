@@ -2,14 +2,13 @@ import logging
 import threading
 from contextlib import asynccontextmanager
 
+from consumer import redis_client
+from database import SessionLocal
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from redis.exceptions import RedisError
 from routes import messages
 from sqlalchemy import text
-
-from consumer import redis_client
-from database import SessionLocal
 
 logging.basicConfig(level=logging.INFO)
 

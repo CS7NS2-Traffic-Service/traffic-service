@@ -20,7 +20,9 @@ def utilization(
         segments=[s.model_dump() for s in body.segments],
     )
     items = [
-        SegmentUtilizationItem(segment_id=s.segment_id, active_reservations=counts.get(s.segment_id, 0))
+        SegmentUtilizationItem(
+            segment_id=s.segment_id, active_reservations=counts.get(s.segment_id, 0)
+        )
         for s in body.segments
     ]
     return SegmentUtilizationResponse(utilization=items)

@@ -2,9 +2,7 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
-
-from application.use_cases import (AssessRouteUseCase,
-                                   ReleaseReservationsUseCase)
+from application.use_cases import AssessRouteUseCase, ReleaseReservationsUseCase
 from domain.assessment import AssessmentResult
 
 
