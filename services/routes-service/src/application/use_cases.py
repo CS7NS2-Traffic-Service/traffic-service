@@ -35,7 +35,7 @@ class CreateRouteUseCase:
         origin_lng: float,
         dest_lat: float,
         dest_lng: float,
-    ) -> Route:
+    ) -> list[Route]:
         origin = f'{origin_lat},{origin_lng}'
         destination = f'{dest_lat},{dest_lng}'
 
@@ -43,46 +43,48 @@ class CreateRouteUseCase:
         if existing:
             return existing
 
-        osrm_result = self._osrm_client.query_route(
+        osrm_results = self._osrm_client.query_route(
             origin_lat, origin_lng, dest_lat, dest_lng
         )
 
-        segment_ids = self._create_segments(osrm_result['steps'])
+        routes = []
+        for osrm_result in osrm_results:
+            segment_ids = self._create_segments(osrm_result['steps'])
+            route = self._route_repo.create(
+                origin=origin,
+                destination=destination,
+                segment_ids=segment_ids,
+                geometry=osrm_result.get('geometry'),
+                estimated_duration=int(osrm_result.get('duration', 0)),
+            )
+            routes.append(route)
 
-        route = self._route_repo.create(
-            origin=origin,
-            destination=destination,
-            segment_ids=segment_ids,
-            geometry=osrm_result.get('geometry'),
-            estimated_duration=int(osrm_result.get('duration', 0)),
-        )
-
-        return route
+        return routes
 
     def _create_segments(self, steps: list[dict]) -> list[str]:
-        segment_ids = []
-        seen_segment_ids = set()
+        segment_ids: list[str] = []
+        seen: set[str] = set()
 
         for step in steps:
-            edge_ids = step['edge_ids']
+            step_edges = set(step['edge_ids'])
+            overlapping = self._segment_repo.find_all_overlapping(list(step_edges))
 
-            existing = self._segment_repo.find_overlapping(edge_ids)
-            if existing:
-                sid = existing.segment_id
-                if sid not in seen_segment_ids:
-                    segment_ids.append(sid)
-                    seen_segment_ids.add(sid)
-                continue
+            for seg in overlapping:
+                if seg.segment_id not in seen:
+                    segment_ids.append(seg.segment_id)
+                    seen.add(seg.segment_id)
+                step_edges -= set(seg.edge_ids or [])
 
-            segment = self._segment_repo.create(
-                osm_way_id=_edge_hash(edge_ids),
-                name=step.get('name') or 'unnamed',
-                region='',
-                capacity=5,
-                edge_ids=edge_ids,
-            )
-            segment_ids.append(segment.segment_id)
-            seen_segment_ids.add(segment.segment_id)
+            if step_edges:
+                new_seg = self._segment_repo.create(
+                    osm_way_id=_edge_hash(sorted(step_edges)),
+                    name=step.get('name') or 'unnamed',
+                    region='',
+                    capacity=5,
+                    edge_ids=sorted(step_edges),
+                )
+                segment_ids.append(new_seg.segment_id)
+                seen.add(new_seg.segment_id)
 
         return segment_ids
 

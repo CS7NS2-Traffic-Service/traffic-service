@@ -17,10 +17,14 @@ class AssessRouteResponse(BaseModel):
     segments_available: bool
 
 
-class SegmentUtilizationRequest(BaseModel):
-    segment_ids: list[str]
+class SegmentWindow(BaseModel):
+    segment_id: str
     window_start: datetime
     window_end: datetime
+
+
+class SegmentUtilizationRequest(BaseModel):
+    segments: list[SegmentWindow]
 
 
 class SegmentUtilizationItem(BaseModel):
@@ -37,3 +41,23 @@ class ReservationItem(BaseModel):
     segment_id: str
     time_window_start: datetime
     time_window_end: datetime
+
+
+class RouteCandidate(BaseModel):
+    route_id: str
+    segment_ids: list[str]
+    estimated_duration: int
+
+
+class RouteAvailabilityRequest(BaseModel):
+    routes: list[RouteCandidate]
+    departure_time: datetime
+
+
+class RouteAvailabilityItem(BaseModel):
+    route_id: str
+    available: bool
+
+
+class RouteAvailabilityResponse(BaseModel):
+    routes: list[RouteAvailabilityItem]

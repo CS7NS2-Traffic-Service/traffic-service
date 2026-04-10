@@ -21,9 +21,13 @@ echo "Running osrm-extract..."
 docker run --rm -v "$DATA_DIR:/data" "$OSRM_IMAGE" \
   osrm-extract -p /opt/car.lua "/data/$PBF_FILE"
 
-echo "Running osrm-contract..."
+echo "Running osrm-partition..."
 docker run --rm -v "$DATA_DIR:/data" "$OSRM_IMAGE" \
-  osrm-contract "/data/${PBF_FILE%.osm.pbf}.osrm"
+  osrm-partition "/data/${PBF_FILE%.osm.pbf}.osrm"
+
+echo "Running osrm-customize..."
+docker run --rm -v "$DATA_DIR:/data" "$OSRM_IMAGE" \
+  osrm-customize "/data/${PBF_FILE%.osm.pbf}.osrm"
 
 echo "OSRM preprocessing complete. You can now run:"
 echo "  docker compose up"

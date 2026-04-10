@@ -17,6 +17,7 @@ type Coord = { lng: number; lat: number }
 
 type Props = {
   geometry?: GeoJSON.Geometry | null
+  alternativeGeometries?: GeoJSON.Geometry[]
   segments?: SegmentData[]
   origin?: Coord | null
   destination?: Coord | null
@@ -42,7 +43,7 @@ function segmentCapacityColor(reserved: number, capacity: number): string {
   return SEGMENT_AVAILABLE_COLOR
 }
 
-function RouteMap({ geometry, segments, origin, destination, onMapClick, className }: Props) {
+function RouteMap({ geometry, alternativeGeometries, segments, origin, destination, onMapClick, className }: Props) {
   const mapRef = useRef<Map | null>(null)
   const markersRef = useRef<Marker[]>([])
   const popupRef = useRef<mapboxgl.Popup | null>(null)
@@ -124,6 +125,7 @@ function RouteMap({ geometry, segments, origin, destination, onMapClick, classNa
     if (!map) return
 
     function sync() {
+      syncAlternativeLines(map!, alternativeGeometries)
       syncRouteLine(map!, segments?.length ? null : geometry)
       syncSegmentLayers(map!, segments, geometry)
       syncMarkers(map!, markersRef, origin, destination)
@@ -138,7 +140,7 @@ function RouteMap({ geometry, segments, origin, destination, onMapClick, classNa
         map.off("idle", sync)
       }
     }
-  }, [geometry, segments, origin, destination])
+  }, [geometry, alternativeGeometries, segments, origin, destination])
 
   return (
     <div
@@ -147,6 +149,39 @@ function RouteMap({ geometry, segments, origin, destination, onMapClick, classNa
       style={{ minHeight: 400 }}
     />
   )
+}
+
+function syncAlternativeLines(map: Map, geometries: GeoJSON.Geometry[] | undefined) {
+  const sourceId = "alt-routes"
+  const layerId = "alt-routes-layer"
+
+  if (!geometries || geometries.length === 0) {
+    if (map.getLayer(layerId)) map.removeLayer(layerId)
+    if (map.getSource(sourceId)) map.removeSource(sourceId)
+    return
+  }
+
+  const geojson: GeoJSON.FeatureCollection = {
+    type: "FeatureCollection",
+    features: geometries.map((g) => ({ type: "Feature", properties: {}, geometry: g })),
+  }
+
+  if (map.getSource(sourceId)) {
+    ;(map.getSource(sourceId) as GeoJSONSource).setData(geojson)
+  } else {
+    map.addSource(sourceId, { type: "geojson", data: geojson })
+    map.addLayer({
+      id: layerId,
+      type: "line",
+      source: sourceId,
+      paint: {
+        "line-color": "#9ca3af",
+        "line-width": 3,
+        "line-opacity": 0.5,
+        "line-dasharray": [2, 2],
+      },
+    })
+  }
 }
 
 function syncRouteLine(map: Map, geometry: GeoJSON.Geometry | null | undefined) {

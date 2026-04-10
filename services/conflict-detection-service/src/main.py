@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from infrastructure.consumer.consumer import redis_client
 from infrastructure.database import SessionLocal
+from infrastructure.http.routes.availability import router as availability_router
 from infrastructure.http.routes.reservations import router as reservations_router
 from infrastructure.http.routes.utilization import router as utilization_router
 from redis.exceptions import RedisError
@@ -37,6 +38,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+app.include_router(availability_router, prefix='/api/conflict-detection')
 app.include_router(utilization_router, prefix='/api/conflict-detection')
 app.include_router(reservations_router, prefix='/api/conflict-detection')
 

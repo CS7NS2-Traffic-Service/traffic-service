@@ -56,17 +56,20 @@ def lookup_route(
     dest_lat: float = Query(..., ge=-90, le=90),
     dest_lng: float = Query(..., ge=-180, le=180),
     use_case: CreateRouteUseCase = Depends(get_create_route_use_case),
-) -> RouteResponse:
-    route = use_case.execute(origin_lat, origin_lng, dest_lat, dest_lng)
-    return RouteResponse(
-        route_id=str(route.route_id),
-        origin=route.origin,
-        destination=route.destination,
-        segment_ids=route.segment_ids,
-        geometry=route.geometry,
-        estimated_duration=route.estimated_duration,
-        created_at=route.created_at,
-    )
+) -> list[RouteResponse]:
+    routes = use_case.execute(origin_lat, origin_lng, dest_lat, dest_lng)
+    return [
+        RouteResponse(
+            route_id=str(route.route_id),
+            origin=route.origin,
+            destination=route.destination,
+            segment_ids=route.segment_ids,
+            geometry=route.geometry,
+            estimated_duration=route.estimated_duration,
+            created_at=route.created_at,
+        )
+        for route in routes
+    ]
 
 
 @router.get('/{route_id}', status_code=200)

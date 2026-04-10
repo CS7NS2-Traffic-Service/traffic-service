@@ -1,14 +1,14 @@
-import { useCallback, useMemo, useRef } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DateTimePicker } from "@/components/ui/date-time-picker"
 import { LocationSearch } from "@/components/ui/LocationSearch"
-import { findRoute, getRouteSegments, getSegmentUtilization } from "@/api/routes"
+import { findRoutes, getRouteSegments, getSegmentUtilization, checkRoutesAvailability } from "@/api/routes"
 import RouteMap from "@/components/RouteMap"
 import RouteResultCard from "./RouteResultCard"
-import { ensureUTCSuffix, parseLocalDateTime } from "@/lib/datetime"
+import { ensureUTCSuffix, parseLocalDateTime, formatDuration } from "@/lib/datetime"
 
 type Coord = { lng: number; lat: number }
 
@@ -99,14 +99,17 @@ function BookRoutePage() {
     return !isNaN(lat) && !isNaN(lng) ? { lat, lng } : null
   }, [destLat, destLng])
 
-  const { mutate, data: route, isPending, error } = useMutation({
+  const [userSelectedIndex, setUserSelectedIndex] = useState<number | null>(null)
+
+  const { mutate, data: allRoutes, isPending, error } = useMutation({
     mutationFn: () =>
-      findRoute(
+      findRoutes(
         parseFloat(originLat),
         parseFloat(originLng),
         parseFloat(destLat),
         parseFloat(destLng),
       ),
+    onSuccess: () => setUserSelectedIndex(null),
     retry: (failureCount, err) => {
       if (!(err instanceof Error)) return failureCount < 2
       if (err.message.includes("No route found")) return false
@@ -114,6 +117,29 @@ function BookRoutePage() {
     },
     retryDelay: (attempt) => attempt * 750,
   })
+
+  const { data: availabilityData } = useQuery({
+    queryKey: ["availability", allRoutes?.map((r) => r.route_id), departureTimeIso],
+    queryFn: () => checkRoutesAvailability(allRoutes!, departureTimeIso),
+    enabled: !!allRoutes && allRoutes.length > 0,
+  })
+
+  const availabilityMap = useMemo(() => {
+    const m = new Map<string, boolean>()
+    for (const a of availabilityData ?? []) m.set(a.route_id, a.available)
+    return m
+  }, [availabilityData])
+
+  const selectedRouteIndex = useMemo(() => {
+    if (userSelectedIndex !== null) return userSelectedIndex
+    if (!allRoutes || !availabilityData) return 0
+    const firstAvailable = allRoutes.findIndex((r) => availabilityMap.get(r.route_id) === true)
+    return firstAvailable >= 0 ? firstAvailable : 0
+  }, [userSelectedIndex, allRoutes, availabilityData, availabilityMap])
+
+  const route = allRoutes?.[selectedRouteIndex]
+  const routeAvailable = route ? availabilityMap.get(route.route_id) : undefined
+  const noAvailableRoutes = !!availabilityData && availabilityData.length > 0 && !availabilityData.some((a) => a.available)
 
   const hasSegments = (route?.segment_ids?.length ?? 0) > 0
 
@@ -126,17 +152,18 @@ function BookRoutePage() {
   const { data: utilizationData } = useQuery({
     queryKey: ["utilization", route?.route_id, departureTimeIso],
     queryFn: () => {
-      const windowStart = departureTimeIso
-      const windowEnd = new Date(
-        departureDate.getTime() +
-        (route!.estimated_duration ?? 0) * 1000 +
-        (segments!.length - 1) * 300 * 1000,
-      ).toISOString()
-      return getSegmentUtilization(
-        segments!.map((s) => s.segment_id),
-        windowStart,
-        windowEnd,
-      )
+      const duration = (route!.estimated_duration ?? 0) * 1000
+      const segmentWindows = segments!.map((s, index) => {
+        const offset = index * 300 * 1000
+        const start = new Date(departureDate.getTime() + offset)
+        const end = new Date(start.getTime() + duration)
+        return {
+          segment_id: s.segment_id,
+          window_start: start.toISOString(),
+          window_end: end.toISOString(),
+        }
+      })
+      return getSegmentUtilization(segmentWindows)
     },
     enabled: !!segments && segments.length > 0,
   })
@@ -148,6 +175,14 @@ function BookRoutePage() {
     }
     return map
   }, [utilizationData])
+
+  const alternativeGeometries = useMemo(() => {
+    if (!allRoutes || allRoutes.length <= 1) return undefined
+    return allRoutes
+      .filter((_, i) => i !== selectedRouteIndex)
+      .map((r) => r.geometry as GeoJSON.Geometry)
+      .filter(Boolean)
+  }, [allRoutes, selectedRouteIndex])
 
   const handleMapClick = useCallback((lngLat: Coord) => {
     const coordLabel = `${lngLat.lat.toFixed(4)}, ${lngLat.lng.toFixed(4)}`
@@ -235,12 +270,55 @@ function BookRoutePage() {
             </CardContent>
           </Card>
 
-          {route && <RouteResultCard route={route} segments={segments} utilization={utilization} departureTime={departureTimeIso} />}
+          {allRoutes && allRoutes.length > 1 && (
+            <Card className="shadow-sm">
+              <CardContent className="space-y-2">
+                <h3 className="text-sm font-semibold">Routes ({allRoutes.length})</h3>
+                {allRoutes.map((r, i) => {
+                  const available = availabilityMap.get(r.route_id)
+                  const isSelected = i === selectedRouteIndex
+                  return (
+                    <button
+                      key={r.route_id}
+                      onClick={() => setUserSelectedIndex(i)}
+                      className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm transition-colors ${isSelected ? "border-blue-500 bg-blue-50" : "hover:bg-muted/50"}`}
+                    >
+                      <div>
+                        <span className="font-medium">Route {i + 1}</span>
+                        {r.estimated_duration != null && (
+                          <span className="ml-2 text-muted-foreground">{formatDuration(r.estimated_duration)}</span>
+                        )}
+                      </div>
+                      {available === false && (
+                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">Fully booked</span>
+                      )}
+                      {available === true && (
+                        <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">Available</span>
+                      )}
+                    </button>
+                  )
+                })}
+              </CardContent>
+            </Card>
+          )}
+
+          {noAvailableRoutes && (
+            <Card className="shadow-sm">
+              <CardContent>
+                <p className="text-sm text-amber-700">
+                  All routes between these points are fully booked for the selected departure time. Try a different time.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {route && <RouteResultCard route={route} segments={segments} utilization={utilization} departureTime={departureTimeIso} available={routeAvailable} />}
         </div>
 
         <div className="lg:sticky lg:top-6 lg:self-start">
           <RouteMap
             geometry={route?.geometry as GeoJSON.Geometry | undefined}
+            alternativeGeometries={alternativeGeometries}
             segments={mapSegments}
             origin={originCoord}
             destination={destCoord}

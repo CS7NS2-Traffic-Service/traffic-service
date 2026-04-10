@@ -19,12 +19,12 @@ export type Segment = {
   coordinates: unknown
 }
 
-export async function findRoute(
+export async function findRoutes(
   originLat: number,
   originLng: number,
   destLat: number,
   destLng: number,
-): Promise<RouteResult> {
+): Promise<RouteResult[]> {
   const params = new URLSearchParams({
     origin_lat: originLat.toString(),
     origin_lng: originLng.toString(),
@@ -34,7 +34,7 @@ export async function findRoute(
   const response = await fetch(`/api/routes/routes?${params}`, {
     headers: authHeaders(),
   })
-  return handleResponse<RouteResult>(response, "Failed to find route")
+  return handleResponse<RouteResult[]>(response, "Failed to find route")
 }
 
 export async function getRouteSegments(routeId: string): Promise<Segment[]> {
@@ -49,20 +49,45 @@ export type SegmentUtilization = {
   active_reservations: number
 }
 
+export type SegmentWindow = {
+  segment_id: string
+  window_start: string
+  window_end: string
+}
+
 export async function getSegmentUtilization(
-  segmentIds: string[],
-  windowStart: string,
-  windowEnd: string,
+  segments: SegmentWindow[],
 ): Promise<SegmentUtilization[]> {
   const response = await fetch("/api/conflict-detection/utilization", {
     method: "POST",
     headers: { ...authHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify({
-      segment_ids: segmentIds,
-      window_start: windowStart,
-      window_end: windowEnd,
-    }),
+    body: JSON.stringify({ segments }),
   })
   const data = await handleResponse<{ utilization: SegmentUtilization[] }>(response, "Failed to fetch utilization")
   return data.utilization
+}
+
+export type RouteAvailability = {
+  route_id: string
+  available: boolean
+}
+
+export async function checkRoutesAvailability(
+  routes: RouteResult[],
+  departureTime: string,
+): Promise<RouteAvailability[]> {
+  const response = await fetch("/api/conflict-detection/availability", {
+    method: "POST",
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({
+      routes: routes.map((r) => ({
+        route_id: r.route_id,
+        segment_ids: r.segment_ids ?? [],
+        estimated_duration: r.estimated_duration ?? 0,
+      })),
+      departure_time: departureTime,
+    }),
+  })
+  const data = await handleResponse<{ routes: RouteAvailability[] }>(response, "Failed to check route availability")
+  return data.routes
 }

@@ -17,12 +17,10 @@ def utilization(
     service: ConflictService = Depends(get_conflict_service),
 ) -> SegmentUtilizationResponse:
     counts = service.get_segment_utilization(
-        segment_ids=body.segment_ids,
-        window_start=body.window_start,
-        window_end=body.window_end,
+        segments=[s.model_dump() for s in body.segments],
     )
     items = [
-        SegmentUtilizationItem(segment_id=sid, active_reservations=counts.get(sid, 0))
-        for sid in body.segment_ids
+        SegmentUtilizationItem(segment_id=s.segment_id, active_reservations=counts.get(s.segment_id, 0))
+        for s in body.segments
     ]
     return SegmentUtilizationResponse(utilization=items)

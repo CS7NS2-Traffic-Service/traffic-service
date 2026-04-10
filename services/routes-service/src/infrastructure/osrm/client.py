@@ -16,13 +16,13 @@ class OSRMClient:
         origin_lng: float,
         dest_lat: float,
         dest_lng: float,
-    ) -> dict:
+    ) -> list[dict]:
         from application.use_cases import extract_steps_with_edges
 
         url = (
             f'{self._url}/route/v1/driving/'
             f'{origin_lng},{origin_lat};{dest_lng},{dest_lat}'
-            f'?overview=full&geometries=geojson&annotations=true&steps=true'
+            f'?overview=full&geometries=geojson&annotations=true&steps=true&alternatives=true'
         )
 
         try:
@@ -47,17 +47,17 @@ class OSRMClient:
                 detail='No route found between the given coordinates',
             )
 
-        osrm_route = data['routes'][0]
-
-        steps_with_edges = []
-        for leg in osrm_route.get('legs', []):
-            steps_with_edges.extend(extract_steps_with_edges(leg))
-
-        return {
-            'geometry': osrm_route.get('geometry'),
-            'duration': osrm_route.get('duration'),
-            'steps': steps_with_edges,
-        }
+        results = []
+        for osrm_route in data['routes']:
+            steps_with_edges = []
+            for leg in osrm_route.get('legs', []):
+                steps_with_edges.extend(extract_steps_with_edges(leg))
+            results.append({
+                'geometry': osrm_route.get('geometry'),
+                'duration': osrm_route.get('duration'),
+                'steps': steps_with_edges,
+            })
+        return results
 
 
 def extract_steps_with_edges(leg: dict) -> list[dict]:

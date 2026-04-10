@@ -90,11 +90,51 @@ class ConflictService:
 
     def get_segment_utilization(
         self,
-        segment_ids: list[str],
-        window_start: datetime,
-        window_end: datetime,
+        segments: list[dict],
     ) -> dict[str, int]:
-        return self._reservations.get_utilization(segment_ids, window_start, window_end)
+        result: dict[str, int] = {}
+        for seg in segments:
+            count = self._reservations.count_overlapping(
+                seg['segment_id'], seg['window_start'], seg['window_end'],
+            )
+            result[seg['segment_id']] = count
+        return result
+
+    def check_routes_availability(
+        self,
+        candidates: list[dict],
+        departure_time: datetime,
+    ) -> dict[str, bool]:
+        results = {}
+        for candidate in candidates:
+            route_id = candidate['route_id']
+            segment_ids = candidate['segment_ids']
+            duration = candidate['estimated_duration']
+
+            if not segment_ids:
+                results[route_id] = True
+                continue
+
+            sorted_ids = sorted(segment_ids)
+            capacities = self._segments.get_capacities(sorted_ids)
+
+            if len(capacities) != len(set(segment_ids)):
+                results[route_id] = False
+                continue
+
+            available = True
+            for index, segment_id in enumerate(segment_ids):
+                offset = timedelta(seconds=SEGMENT_OFFSET_SECONDS * index)
+                start = departure_time + offset
+                end = start + timedelta(seconds=duration)
+                overlap = self._reservations.count_overlapping(segment_id, start, end)
+                if overlap >= capacities[segment_id]:
+                    available = False
+                    break
+
+            results[route_id] = available
+
+        return results
 
     def get_reservations_by_booking(self, booking_id: str) -> list[Reservation]:
         return self._reservations.get_by_booking(booking_id)

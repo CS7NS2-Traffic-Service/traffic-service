@@ -12,11 +12,13 @@ function RouteResultCard({
   segments,
   utilization,
   departureTime,
+  available,
 }: {
   route: RouteResult
   segments: Segment[] | undefined
   utilization: Record<string, number>
   departureTime: string
+  available?: boolean
 }) {
   const queryClient = useQueryClient()
   const [bookingResult, setBookingResult] = useState<Booking | null>(null)
@@ -28,6 +30,7 @@ function RouteResultCard({
       setBookingResult(booking)
       setBookingError(null)
       queryClient.invalidateQueries({ queryKey: ["utilization"] })
+      queryClient.invalidateQueries({ queryKey: ["availability"] })
       queryClient.invalidateQueries({ queryKey: ["bookings"] })
     },
     onError: (err: Error) => {
@@ -62,7 +65,8 @@ function RouteResultCard({
         ) : (
           <div className="flex items-center gap-2">
             {bookingError && <p className="text-sm text-red-500">{bookingError}</p>}
-            <Button onClick={handleBook} disabled={isBooking}>
+            {available === false && <span className="text-sm text-red-500">Fully booked</span>}
+            <Button onClick={handleBook} disabled={isBooking || available === false}>
               {isBooking ? "Booking..." : "Book this Route"}
             </Button>
           </div>

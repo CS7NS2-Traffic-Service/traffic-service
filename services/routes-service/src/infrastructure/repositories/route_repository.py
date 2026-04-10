@@ -17,15 +17,13 @@ class PostgresRouteRepository:
             return None
         return self._to_domain(row)
 
-    def find_by_origin_destination(self, origin: str, destination: str) -> Route | None:
-        row = (
+    def find_by_origin_destination(self, origin: str, destination: str) -> list[Route]:
+        rows = (
             self._db.query(RouteORM)
             .filter(RouteORM.origin == origin, RouteORM.destination == destination)
-            .first()
+            .all()
         )
-        if row is None:
-            return None
-        return self._to_domain(row)
+        return [self._to_domain(row) for row in rows]
 
     def create(
         self,
@@ -81,17 +79,18 @@ class PostgresSegmentRepository:
         )
         return [self._to_domain(r) for r in rows]
 
-    def find_overlapping(self, edge_ids: list[str]) -> RoadSegment | None:
+    def find_all_overlapping(self, edge_ids: list[str]) -> list[RoadSegment]:
         segments = (
             self._db.query(RoadSegmentORM)
             .filter(RoadSegmentORM.edge_ids.isnot(None))
             .all()
         )
-        for segment in segments:
-            stored_edges = set(segment.edge_ids or [])
-            if stored_edges & set(edge_ids):
-                return self._to_domain(segment)
-        return None
+        query_edges = set(edge_ids)
+        return [
+            self._to_domain(segment)
+            for segment in segments
+            if set(segment.edge_ids or []) & query_edges
+        ]
 
     def create(
         self,

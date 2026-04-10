@@ -9,7 +9,7 @@ class RouteRepository(Protocol):
 
     def find_by_origin_destination(
         self, origin: str, destination: str
-    ) -> Route | None: ...
+    ) -> list[Route]: ...
 
     def create(
         self,
@@ -26,7 +26,7 @@ class SegmentRepository(Protocol):
 
     def get_by_ids(self, segment_ids: list[str]) -> list[RoadSegment]: ...
 
-    def find_overlapping(self, edge_ids: list[str]) -> RoadSegment | None: ...
+    def find_all_overlapping(self, edge_ids: list[str]) -> list[RoadSegment]: ...
 
     def create(
         self,
@@ -45,4 +45,4 @@ class OSRMClient(Protocol):
         origin_lng: float,
         dest_lat: float,
         dest_lng: float,
-    ) -> dict: ...
+    ) -> list[dict]: ...
