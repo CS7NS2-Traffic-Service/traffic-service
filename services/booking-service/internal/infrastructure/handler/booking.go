@@ -112,20 +112,24 @@ func (h *BookingHandler) CreateBooking(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	expiresAt := req.DepartureTime
+	if req.EstimatedArrival != nil {
+		expiresAt = *req.EstimatedArrival
+	}
+	expiresAtUTC := expiresAt.UTC()
+
 	booking := &domain.Booking{
 		DriverID:         driverID,
 		RouteID:          req.RouteID,
 		DepartureTime:    req.DepartureTime.UTC(),
 		EstimatedArrival: req.EstimatedArrival,
 		Status:           domain.StatusPending,
-		ExpiresAt:        &req.DepartureTime,
+		ExpiresAt:        &expiresAtUTC,
 	}
 	if booking.EstimatedArrival != nil {
 		estimatedArrivalUTC := booking.EstimatedArrival.UTC()
 		booking.EstimatedArrival = &estimatedArrivalUTC
 	}
-	expiresAtUTC := booking.ExpiresAt.UTC()
-	booking.ExpiresAt = &expiresAtUTC
 
 	created, err := h.service.CreateBooking(ctx, booking)
 	if err != nil {

@@ -10,12 +10,12 @@ storage:
   type: gp2
 
 replicaCount:
-  apiGateway: 1
-  bff: 1
-  driverService: 1
-  bookingService: 1
-  routesService: 1
-  conflictDetection: 1
-  messagingService: 1
+  apiGateway: 2
+  bff: 2
+  driverService: 2
+  bookingService: 2
+  routesService: 2
+  conflictDetection: 2
+  messagingService: 2
   pgadmin: 0
   redisinsight: 0
