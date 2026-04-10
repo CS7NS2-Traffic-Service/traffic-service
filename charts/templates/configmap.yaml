@@ -6,6 +6,7 @@ metadata:
 data:
   REDIS_URL: redis://redis:6379
   DATABASE_URL: postgresql://traffic:traffic@postgres-rw:5432/traffic
+  DATABASE_REPLICA_URL: postgresql://traffic:traffic@postgres-ro:5432/traffic
   JWT_SECRET_KEY: super-secret-key
   BFF_URL: http://bff:8080
   SERVICE_DRIVER: http://driver-service:8081

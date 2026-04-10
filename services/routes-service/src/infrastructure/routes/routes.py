@@ -4,7 +4,7 @@ from application.use_cases import (
     GetRouteUseCase,
 )
 from fastapi import APIRouter, Depends, HTTPException, Query
-from infrastructure.dependencies import get_db_connection
+from infrastructure.dependencies import get_db_connection, get_read_db_connection
 from infrastructure.http.schemas import RouteResponse, SegmentResponse
 from infrastructure.osrm.client import OSRMClient
 from infrastructure.repositories.route_repository import (
@@ -38,11 +38,13 @@ def get_create_route_use_case(
     )
 
 
-def get_route_use_case(db: Session = Depends(get_db_connection)) -> GetRouteUseCase:
+def get_route_use_case(
+    db: Session = Depends(get_read_db_connection),
+) -> GetRouteUseCase:
     return GetRouteUseCase(PostgresRouteRepository(db))
 
 
-def get_segments_use_case(db: Session = Depends(get_db_connection)):
+def get_segments_use_case(db: Session = Depends(get_read_db_connection)):
     return GetRouteSegmentsUseCase(
         route_repo=PostgresRouteRepository(db),
         segment_repo=PostgresSegmentRepository(db),

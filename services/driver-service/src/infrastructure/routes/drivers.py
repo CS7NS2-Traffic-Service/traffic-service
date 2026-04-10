@@ -1,6 +1,6 @@
 from application.use_cases import GetDriverProfileUseCase
 from fastapi import APIRouter, Depends, Header, HTTPException
-from infrastructure.dependencies import get_db_connection
+from infrastructure.dependencies import get_read_db_connection
 from infrastructure.http.schemas import DriverResponse
 from infrastructure.repositories.driver_repository import PostgresDriverRepository
 from sqlalchemy.orm import Session
@@ -9,7 +9,7 @@ router = APIRouter()
 
 
 def get_profile_use_case(
-    db: Session = Depends(get_db_connection),
+    db: Session = Depends(get_read_db_connection),
 ) -> GetDriverProfileUseCase:
     return GetDriverProfileUseCase(PostgresDriverRepository(db))
 

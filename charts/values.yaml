@@ -19,7 +19,7 @@ apiGateway:
   serviceType: NodePort
 
 postgres:
-  instances: 1
+  instances: 2
   storageSize: 1Gi
 
 storage:

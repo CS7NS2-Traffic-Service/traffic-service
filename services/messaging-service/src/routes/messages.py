@@ -1,4 +1,4 @@
-from dependencies import get_db_connection
+from dependencies import get_db_connection, get_read_db_connection
 from fastapi import APIRouter, Depends, Header, HTTPException
 from schemas import MessageListResponse, MessageResponse
 from services.message import list_messages, mark_as_read
@@ -21,7 +21,7 @@ def _to_response(message) -> MessageResponse:
 @router.get('', status_code=200)
 def list_all(
     x_driver_id: str = Header(...),
-    db: Session = Depends(get_db_connection),
+    db: Session = Depends(get_read_db_connection),
 ) -> MessageListResponse:
     messages = list_messages(x_driver_id, db)
     return MessageListResponse(messages=[_to_response(m) for m in messages])

@@ -110,40 +110,28 @@ Instead, the booking is given a PENDING status upon receipt. The system then asy
 This model is a practical implementation of the Saga pattern: rather than a single distributed transaction spanning multiple services, the booking workflow is decomposed into a sequence of local transactions, each of which either succeeds and triggers the next step or fails and triggers a compensating action.
 
 \subsection{Services}
-The system is decomposed into seven services, each with a single well-defined responsibility. All client traffic enters through the API Gateway, which validates JWTs on every request except the public authentication paths, injects an X-Driver-ID header into forwarded requests, and routes based on path prefix. POST /auth/register and POST /auth/login are the only endpoints accessible without a valid JWT. All other endpoints require a Bearer token in the Authorization header.\\\\
+The system is decomposed into seven services, each with a single well-defined responsibility. All client traffic enters through the API Gateway, which validates JWTs on every request except the public authentication paths, injects an X-Driver-ID header into forwarded requests, and routes based on path prefix.
 
-\textbf{BFF (Backend for Frontend):}\\
-Serves the compiled React frontend to browsers and proxies API calls from the frontend to the API Gateway. Owns no database tables. Exposes no API of its own.\\\\
+\vspace{0.2cm}
+\noindent\textbf{BFF (Backend for Frontend):} Serves the compiled React frontend to browsers and proxies API calls from the frontend to the API Gateway. Owns no database tables. Exposes no API of its own.
 
-\textbf{API Gateway:}\\
-The single entry point for all external traffic. Validates authentication tokens, enforces rate limits using Redis counters, and routes requests to the appropriate downstream service based on path prefix. Owns no database tables.\\\\
+\vspace{0.2cm}
+\noindent\textbf{API Gateway:} The single entry point for all external traffic. Validates authentication tokens, enforces rate limits using Redis counters, and routes requests to the appropriate downstream service based on path prefix. Owns no database tables.
 
-\textbf{Driver Service:}\\
-Manages driver identity. Handles registration, authentication, and the issuance of signed session tokens. Owns the drivers table.\\
-POST /auth/register accepts a driver's name, email, password, licence number, vehicle type, and home region. It creates the account and returns a JWT. Passwords are stored as bcrypt hashes and the plain-text password is never stored or logged.\\
-POST /auth/login accepts an email and password. On success it returns a signed JWT containing the driver's ID and a 24-hour expiry timestamp. This token must be presented on all subsequent authenticated requests.\\
-GET /drivers/me returns the authenticated driver's profile information.\\\\
+\vspace{0.2cm}
+\noindent\textbf{Driver Service:} Manages driver identity and authentication. Owns the drivers table. API: POST /auth/register, POST /auth/login, GET /drivers/me
 
-\textbf{Booking Service:}\\
-Owns the booking lifecycle. Accepts booking submissions, maintains the booking state machine, and coordinates the event pipeline that drives conflict detection and notification delivery. Owns the bookings table.\\
-POST /bookings accepts a route ID and departure time. Returns HTTP 202 Accepted immediately with the new booking's ID. The booking is recorded with PENDING status and enters the asynchronous processing pipeline.\\
-GET /bookings returns a paginated list of the authenticated driver's bookings including their current status and route details.\\
-GET /bookings/\{booking_id\} returns the full detail of a single booking.\\
-DELETE /bookings/\{booking_id\} cancels a booking. Valid for bookings in PENDING or APPROVED status. Returns an error if the booking is in any other state.\\\\
+\vspace{0.2cm}
+\noindent\textbf{Booking Service:} Owns the booking lifecycle. Accepts booking submissions, maintains the booking state machine, and coordinates the event pipeline. Owns the bookings table. API: POST /bookings, GET /bookings, GET /bookings/\{booking\_id\}, DELETE /bookings/\{booking\_id\}
 
-\textbf{Route Service:}\\
-Computes and caches driving routes by integrating with the OSRM routing engine. Owns the routes table and the road_segments table for seeding purposes.\\
-GET /routes accepts origin and destination coordinates as query parameters. If a route between those coordinates has been computed previously the cached result is returned. Otherwise the service queries OSRM, stores the result, and returns it. The response includes the route geometry as a GeoJSON LineString and the ordered list of road segments with their current utilisation levels.\\
-GET /routes/\{route_id\} returns the full detail of a specific route.\\
-GET /routes/\{route_id\}/segments returns the ordered segment list for a route with capacity information for each segment.\\\\
+\vspace{0.2cm}
+\noindent\textbf{Route Service:} Computes and caches driving routes by integrating with the OSRM routing engine. Owns the routes and road\_segments tables. API: GET /routes, GET /routes/\{route\_id\}, GET /routes/\{route\_id\}/segments
 
-\textbf{Conflict Detection Service:}\\
-The capacity enforcement engine. Consumes booking events, checks road segment capacity, creates or denies reservations, and emits assessment outcomes. Owns the road_segments and segment_reservations tables for operational purposes. Exposes no external API; it operates entirely through event consumption and publication.\\\\
+\vspace{0.2cm}
+\noindent\textbf{Conflict Detection Service:} The capacity enforcement engine. Consumes booking events, checks road segment capacity, creates or denies reservations, and emits assessment outcomes. Owns the road\_segments and segment\_reservations tables. Operates entirely through event consumption and publication; no external API.
 
-\textbf{Messaging Service:}\\
-Delivers notifications to drivers. Consumes booking outcome events and creates inbox messages. Owns the messages table.\\
-GET /messages returns the authenticated driver's notification inbox ordered by most recent first.\\
-PUT /messages/\{message_id\}/read marks a specific message as read.
+\vspace{0.2cm}
+\noindent\textbf{Messaging Service:} Delivers notifications to drivers. Consumes booking outcome events and creates inbox messages. Owns the messages table. API: GET /messages, PUT /messages/\{message\_id\}/read
 
 \subsection{Frontend pages}
 The React frontend served by the BFF provides the following pages:\\\\

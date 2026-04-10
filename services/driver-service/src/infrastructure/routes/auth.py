@@ -1,6 +1,6 @@
 from application.use_cases import LoginDriverUseCase, RegisterDriverUseCase
 from fastapi import APIRouter, Depends, HTTPException
-from infrastructure.dependencies import get_db_connection
+from infrastructure.dependencies import get_db_connection, get_read_db_connection
 from infrastructure.http.schemas import (
     DriverResponse,
     LoginDriverDto,
@@ -19,7 +19,9 @@ def get_register_use_case(
     return RegisterDriverUseCase(PostgresDriverRepository(db))
 
 
-def get_login_use_case(db: Session = Depends(get_db_connection)) -> LoginDriverUseCase:
+def get_login_use_case(
+    db: Session = Depends(get_read_db_connection),
+) -> LoginDriverUseCase:
     return LoginDriverUseCase(PostgresDriverRepository(db))
 
 
