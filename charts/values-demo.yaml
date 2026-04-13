@@ -17,5 +17,5 @@ replicaCount:
   routesService: 2
   conflictDetection: 2
   messagingService: 2
-  pgadmin: 0
-  redisinsight: 0
+  pgadmin: 1
+  redisinsight: 1
