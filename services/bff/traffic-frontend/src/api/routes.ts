@@ -44,6 +44,13 @@ export async function getRouteSegments(routeId: string): Promise<Segment[]> {
   return handleResponse<Segment[]>(response, "Failed to fetch route segments")
 }
 
+export async function fetchRoute(routeId: string): Promise<RouteResult> {
+  const response = await fetch(`/api/routes/routes/${routeId}`, {
+    headers: authHeaders(),
+  })
+  return handleResponse<RouteResult>(response, "Failed to fetch route")
+}
+
 export type SegmentUtilization = {
   segment_id: string
   active_reservations: number
