@@ -137,6 +137,10 @@ def run_consumer(stop_event: Event | None = None) -> None:
             for _, entries in messages:
                 for msg_id, fields in entries:
                     envelope = parse_envelope(fields, msg_id)
+                    correlation_id = envelope.get('correlation_id', str(uuid4()))
+                    logger.info(
+                        'consuming message %s correlation_id=%s', msg_id, correlation_id
+                    )
 
                     try:
                         process_with_retry(

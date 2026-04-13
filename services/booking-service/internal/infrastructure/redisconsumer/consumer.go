@@ -142,6 +142,8 @@ func (c *Consumer) handleMessage(ctx context.Context, stream string, message red
 		return err
 	}
 
+	log.Printf("consuming message %s correlation_id=%s", message.ID, envelope.CorrelationID)
+
 	alreadyProcessed, err := c.repo.IsEventProcessed(ctx, envelope.EventID, "booking-service")
 	if err != nil {
 		return err
