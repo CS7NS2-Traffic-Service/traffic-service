@@ -56,6 +56,18 @@ func (c *Consumer) ensureConsumerGroup(ctx context.Context) {
 }
 
 func (c *Consumer) Start(ctx context.Context) {
+	for ctx.Err() == nil {
+		log.Println("consumer starting")
+		c.run(ctx)
+		if ctx.Err() != nil {
+			return
+		}
+		log.Println("consumer exited unexpectedly, restarting in 2s")
+		time.Sleep(2 * time.Second)
+	}
+}
+
+func (c *Consumer) run(ctx context.Context) {
 	c.ensureConsumerGroup(ctx)
 
 	for {
@@ -73,7 +85,7 @@ func (c *Consumer) Start(ctx context.Context) {
 			}).Result()
 
 		if err != nil {
-			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			if ctx.Err() != nil {
 				return
 			}
 			if errors.Is(err, redis.Nil) {
@@ -97,6 +109,7 @@ func (c *Consumer) Start(ctx context.Context) {
 					c.client.XAck(ctx, stream.Stream, "booking-service", msg.ID)
 					continue
 				}
+				log.Printf("processed message %s", msg.ID)
 				c.client.XAck(ctx, stream.Stream, "booking-service", msg.ID)
 			}
 		}
