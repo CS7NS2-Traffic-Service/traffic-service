@@ -48,7 +48,7 @@ func main() {
 
 	router.Get("/health", healthCheckHandler)
 	router.Get("/health/live", healthLiveHandler)
-	router.Get("/health/ready", healthReadyHandler(pool, redisClient))
+	router.Get("/health/ready", healthReadyHandler(pool))
 	router.Route("/api/booking/bookings", func(r chi.Router) {
 		r.Get("/", bookingHandler.ListBookings)
 		r.Post("/", bookingHandler.CreateBooking)
@@ -87,18 +87,13 @@ func healthLiveHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status":"live"}`))
 }
 
-func healthReadyHandler(pool *pgxpool.Pool, redisClient *redis.Client) http.HandlerFunc {
+func healthReadyHandler(pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()
 
 		if err := pool.Ping(ctx); err != nil {
 			http.Error(w, `{"status":"not_ready","dependency":"postgres"}`, http.StatusServiceUnavailable)
-			return
-		}
-
-		if err := redisClient.Ping(ctx).Err(); err != nil {
-			http.Error(w, `{"status":"not_ready","dependency":"redis"}`, http.StatusServiceUnavailable)
 			return
 		}
 

@@ -109,13 +109,6 @@ async def health_live():
 
 @app.get('/health/ready')
 async def health_ready():
-    try:
-        await redis_client.ping()
-    except RedisConnectionError:
-        return JSONResponse(
-            status_code=503,
-            content={'status': 'not_ready', 'dependency': 'redis'},
-        )
     return {'status': 'ready'}
 
 
