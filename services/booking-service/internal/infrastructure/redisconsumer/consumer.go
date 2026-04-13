@@ -42,7 +42,12 @@ func (c *Consumer) ensureConsumerGroup(ctx context.Context) {
 			return
 		}
 		err := c.client.XGroupCreateMkStream(ctx, "route.assessed", "booking-service", "0").Err()
-		if err == nil || strings.Contains(err.Error(), "BUSYGROUP") {
+		if err == nil {
+			log.Println("consumer group created successfully")
+			return
+		}
+		if strings.Contains(err.Error(), "BUSYGROUP") {
+			log.Println("consumer group already exists")
 			return
 		}
 		log.Printf("failed to create consumer group, retrying in 2s: %v", err)
@@ -75,6 +80,7 @@ func (c *Consumer) Start(ctx context.Context) {
 				continue
 			}
 			if strings.Contains(err.Error(), "NOGROUP") {
+				log.Println("consumer group lost, recreating")
 				c.ensureConsumerGroup(ctx)
 				continue
 			}

@@ -150,6 +150,13 @@ def run_consumer(stop_event: Event | None = None) -> None:
                         continue
 
                     redis_client.xack(STREAM, GROUP, msg_id)
+        except redis.exceptions.ResponseError as e:
+            if 'NOGROUP' in str(e):
+                logger.warning('Consumer group lost, recreating')
+                ensure_consumer_group()
+            else:
+                logger.exception('Consumer error')
+            time.sleep(1)
         except Exception:
             logger.exception('Consumer error')
             time.sleep(1)

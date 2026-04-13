@@ -183,6 +183,13 @@ def run_consumer(stop_event: Event | None = None) -> None:
                     except Exception as exc:
                         publish_to_dlq(CREATED_STREAM, msg_id, fields, exc)
                     redis_client.xack(CREATED_STREAM, GROUP, msg_id)
+        except redis.exceptions.ResponseError as e:
+            if 'NOGROUP' in str(e):
+                logger.warning('Consumer group lost, recreating')
+                ensure_consumer_group(CREATED_STREAM)
+            else:
+                logger.exception('Consumer error')
+            time.sleep(1)
         except Exception:
             logger.exception('Consumer error')
             time.sleep(1)
@@ -214,6 +221,13 @@ def run_updated_consumer(stop_event: Event | None = None) -> None:
                     except Exception as exc:
                         publish_to_dlq(UPDATED_STREAM, msg_id, fields, exc)
                     redis_client.xack(UPDATED_STREAM, GROUP, msg_id)
+        except redis.exceptions.ResponseError as e:
+            if 'NOGROUP' in str(e):
+                logger.warning('Consumer group lost, recreating')
+                ensure_consumer_group(UPDATED_STREAM)
+            else:
+                logger.exception('Updated consumer error')
+            time.sleep(1)
         except Exception:
             logger.exception('Updated consumer error')
             time.sleep(1)
