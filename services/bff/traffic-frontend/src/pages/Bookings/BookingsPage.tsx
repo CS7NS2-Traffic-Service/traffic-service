@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/StatusBadge"
 import { fetchBookings, cancelBooking, fetchBookingReservations, type Booking, type BookingStatus } from "@/api/bookings"
 import { cn } from "@/lib/utils"
+import { fetchRoute, getRouteSegments } from "@/api/routes"
+import { LocationText } from "@/components/LocationText"
+import RouteMap from "@/components/RouteMap"
 
 type BookingFilter = {
   label: string
@@ -73,13 +76,71 @@ function BookingCard({ booking, onCancel, isCancelling, expanded, onToggle }: {
     enabled: expanded,
   })
 
+  const { data: route } = useQuery({
+    queryKey: ["route", booking.route_id],
+    queryFn: () => fetchRoute(booking.route_id),
+  })
+  
+  const { data: segments } = useQuery({
+    queryKey: ["segments", booking.route_id],
+    queryFn: () => getRouteSegments(booking.route_id),
+    enabled: expanded,
+  })
+
+  // Helper to extract origin/destination from geometry
+  const geometry = route?.geometry as GeoJSON.Geometry | undefined
+  const extractPoints = (g: GeoJSON.Geometry | undefined) => {
+    if (!g) return { origin: null, destination: null }
+    if (g.type === "LineString") {
+      const start = g.coordinates[0]
+      const end = g.coordinates[g.coordinates.length - 1]
+      return {
+        origin: { lng: start[0], lat: start[1] },
+        destination: { lng: end[0], lat: end[1] },
+      }
+    }
+    if (g.type === "MultiLineString") {
+      const firstLine = g.coordinates[0]
+      const lastLine = g.coordinates[g.coordinates.length - 1]
+      const start = firstLine[0]
+      const end = lastLine[lastLine.length - 1]
+      return {
+        origin: { lng: start[0], lat: start[1] },
+        destination: { lng: end[0], lat: end[1] },
+      }
+    }
+    return { origin: null, destination: null }
+  }
+
+  const { origin: originCoord, destination: destCoord } = extractPoints(geometry)
+
+  const mapSegments = segments?.map((seg) => ({
+    segment_id: seg.segment_id,
+    name: seg.name,
+    region: seg.region,
+    coordinates: seg.coordinates,
+    capacity: seg.capacity,
+    reserved: 0,
+    utilization: 0,
+  }))
+
   return (
     <Card className="cursor-pointer shadow-sm transition-colors hover:bg-muted/30" onClick={onToggle}>
       <CardContent className="space-y-3">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-semibold">Route {shortId(booking.route_id)}</p>
+              <p className="text-sm font-semibold">
+                {route ? (
+                  <span className="flex items-center gap-1.5">
+                    <LocationText value={route.origin} />
+                    <span className="text-muted-foreground font-normal">to</span>
+                    <LocationText value={route.destination} />
+                  </span>
+                ) : (
+                  `Route ${shortId(booking.route_id)}`
+                )}
+              </p>
               <StatusBadge status={booking.status} />
             </div>
             <p className="text-sm text-muted-foreground">
@@ -104,29 +165,39 @@ function BookingCard({ booking, onCancel, isCancelling, expanded, onToggle }: {
           )}
         </div>
         {expanded && (
-          <div className="border-t pt-3">
-            <p className="mb-2 text-sm font-medium">Segment reservations</p>
-            {reservationsLoading && (
-              <p className="text-sm text-muted-foreground">Loading...</p>
-            )}
-            {reservations && reservations.length === 0 && (
-              <p className="text-sm text-muted-foreground">No reservations found.</p>
-            )}
-            {reservations && reservations.length > 0 && (
-              <div className="space-y-1.5">
-                {reservations.map((r) => (
-                  <div
-                    key={r.reservation_id}
-                    className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2 text-sm text-muted-foreground"
-                  >
-                    <span>Segment {shortId(r.segment_id)}</span>
-                    <span>
-                      {formatUTCToLocalTime(r.time_window_start)} – {formatUTCToLocalTime(r.time_window_end)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="border-t pt-3 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <RouteMap
+              geometry={geometry}
+              segments={mapSegments}
+              origin={originCoord}
+              destination={destCoord}
+              className="h-[300px] border shadow-inner"
+            />
+            
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Segment reservations</p>
+              {reservationsLoading && (
+                <p className="text-sm text-muted-foreground">Loading reservations...</p>
+              )}
+              {reservations && reservations.length === 0 && (
+                <p className="text-sm text-muted-foreground">No reservations found.</p>
+              )}
+              {reservations && reservations.length > 0 && (
+                <div className="space-y-1.5">
+                  {reservations.map((r) => (
+                    <div
+                      key={r.reservation_id}
+                      className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2 text-sm text-muted-foreground"
+                    >
+                      <span>Segment {shortId(r.segment_id)}</span>
+                      <span>
+                        {formatUTCToLocalTime(r.time_window_start)} – {formatUTCToLocalTime(r.time_window_end)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </CardContent>
