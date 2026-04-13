@@ -26,14 +26,21 @@ spec:
       imagePullSecrets:
         - name: {{ .Values.imagePullSecret }}
       {{- end }}
+      tolerations:
+        - key: "dedicated"
+          operator: "Equal"
+          value: "osrm"
+          effect: "NoSchedule"
+      nodeSelector:
+        eks.amazonaws.com/nodegroup: osrm-ng
       containers:
         - name: osrm
           image: {{ .Values.image.registry }}/osrm-ireland:latest
           imagePullPolicy: IfNotPresent
           resources:
             requests:
-              cpu: 100m
-              memory: 512Mi
+              cpu: 500m
+              memory: 1Gi
             limits:
               cpu: 1000m
               memory: 1Gi
