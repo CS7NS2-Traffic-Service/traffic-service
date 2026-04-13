@@ -36,14 +36,22 @@ func NewConsumer(
 	}
 }
 
-func (c *Consumer) Start(ctx context.Context) {
-	err := c.client.XGroupCreateMkStream(ctx, "route.assessed", "booking-service", "0").Err()
-
-	if err != nil && !strings.Contains(err.Error(),
-		"BUSYGROUP") {
-		log.Printf("failed to create consumer group: %v", err)
-		return
+func (c *Consumer) ensureConsumerGroup(ctx context.Context) {
+	for {
+		if ctx.Err() != nil {
+			return
+		}
+		err := c.client.XGroupCreateMkStream(ctx, "route.assessed", "booking-service", "0").Err()
+		if err == nil || strings.Contains(err.Error(), "BUSYGROUP") {
+			return
+		}
+		log.Printf("failed to create consumer group, retrying in 2s: %v", err)
+		time.Sleep(2 * time.Second)
 	}
+}
+
+func (c *Consumer) Start(ctx context.Context) {
+	c.ensureConsumerGroup(ctx)
 
 	for {
 		if ctx.Err() != nil {
@@ -66,7 +74,12 @@ func (c *Consumer) Start(ctx context.Context) {
 			if errors.Is(err, redis.Nil) {
 				continue
 			}
+			if strings.Contains(err.Error(), "NOGROUP") {
+				c.ensureConsumerGroup(ctx)
+				continue
+			}
 			log.Printf("consumer error: %v", err)
+			time.Sleep(time.Second)
 			continue
 		}
 
